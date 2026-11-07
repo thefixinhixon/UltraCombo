@@ -355,6 +355,20 @@ static void parse_script(const char *spec)
     }
 }
 
+// Testing: KI2_POKE="F:OFFSET:VALUE,..." writes a byte of game RAM (hex
+// offset into ram2, hex value) before frame F, headless only.
+static void apply_pokes(int frame)
+{
+    const char *p = getenv("KI2_POKE");
+    while (p && *p) {
+        int f; unsigned off, v, n = 0;
+        if (sscanf(p, "%d:%x:%x%n", &f, &off, &v, (int *)&n) != 3) break;
+        if (f == frame && off < RAM2_SIZE) { ram2[off] = (uint8_t)v; ram_touch(&ram2[off]); }
+        p += n;
+        if (*p == ',') p++;
+    }
+}
+
 static void apply_script(int frame)
 {
     hw.p1 = hw.p2 = 0xffffffffu;
@@ -841,6 +855,7 @@ int main(int argc, char **argv)
         for (int f = (int)machine_frame() + 1; f <= headless; f++) {
             if (trace_from && f == trace_from) cpu_trace = true;
             apply_script(f);
+            apply_pokes(f);
             if (getenv("KI2_TRAINING") && f >= atoi(getenv("KI2_TRAINING"))) { cfg.training = true; training_apply(true); }   // testing: from frame N
             uint64_t t0 = SDL_GetPerformanceCounter();
             run_frame();

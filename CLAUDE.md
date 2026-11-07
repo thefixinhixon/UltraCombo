@@ -203,7 +203,8 @@ for details): `KI2_LOG_EXC`, `KI2_LOG_IDE` and `KI2_LOG_SOUND` (logging; also th
 `KI2_DUMP_AT` (RAM snapshot at a frame), `KI2_WAV` (record audio, output is
 game-derived), `KI2_CONSOLE` (Windows: log to the console instead of
 `ki2.log`). `KI2_DUMP_AT` also takes a list (`F1,F2,...` → `ram2_<F>.bin`),
-`KI2_TRAINING=N` applies training mode headless from frame N, `KI2_SWITCH_TEST=N:V`
+`KI2_TRAINING=N` applies training mode headless from frame N,
+`KI2_POKE=F:OFFSET:VALUE,...` writes a byte of ram2 (hex) before frame F, `KI2_SWITCH_TEST=N:V`
 switches to game version V after N frames (must equal a fresh start).
 
 Finding a game's RAM locations: run two deterministic headless scripts
