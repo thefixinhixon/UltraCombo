@@ -569,7 +569,7 @@ enum { C_P1, C_P2, C_PAD, C_HOTKEYS, C_PADHOT, C_SOCD, C_RUMBLE, C_DEADZONE, C_P
 // Game & system
 enum { S_VOLUME, S_MUTE_BG, S_PAUSE_BG, S_VERSION, S_DIFFICULTY, S_FREEPLAY, S_BLOOD, S_BLOODCOL, S_FINISH, S_DEMO, S_DISK, S_AUTOCOIN, S_RUNAHEAD, S_REWIND, S_BACK, S_COUNT };
 // Practice
-enum { T_TRAINING, T_REFILL, T_INPUTS, T_RECORD, T_PLAY, T_BACK, T_COUNT };
+enum { T_TRAINING, T_REFILL, T_P2HEALTH, T_INPUTS, T_RECORD, T_PLAY, T_BACK, T_COUNT };
 // Netplay
 enum { N_HOST, N_JOIN, N_ADDRESS, N_PORT, N_DELAY, N_DISCONNECT, N_BACK, N_COUNT };
 
@@ -820,6 +820,8 @@ static void draw_menu(uint32_t *out)
         title = "PRACTICE";
         snprintf(b[T_TRAINING], 72, "Training mode\t%s", onoff[cfg.training]);
         snprintf(b[T_REFILL], 72, "Health refill\t%s", onoff[cfg.training_refill]);
+        static const char *const p2_names[] = { "Full", "Last bar", "Last bar, low" };
+        snprintf(b[T_P2HEALTH], 72, "Player 2 health\t< %s >", game.bars_p1 ? p2_names[cfg.training_p2] : "Full");
         snprintf(b[T_INPUTS], 72, "Input display\t%s", onoff[cfg.input_display]);
         snprintf(b[T_RECORD], 72, "Record dummy (player 2)");
         snprintf(b[T_PLAY], 72, "Play / stop dummy");
@@ -1078,6 +1080,7 @@ static void menu_change(int dir)
         switch (menu_sel) {
         case T_TRAINING: if (in_netplay()) { not_in_netplay(); return; } cfg.training = !cfg.training; break;
         case T_REFILL: cfg.training_refill = !cfg.training_refill; break;
+        case T_P2HEALTH: if (game.bars_p1) cycle(&cfg.training_p2, 3, d); break;
         case T_INPUTS: cfg.input_display = !cfg.input_display; break;
         case T_RECORD: if (!dir) { if (in_netplay()) not_in_netplay(); else { training_record_toggle(); menu_close(); } } return;
         case T_PLAY: if (!dir) { if (in_netplay()) not_in_netplay(); else { training_play_toggle(); menu_close(); } } return;

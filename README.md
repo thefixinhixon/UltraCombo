@@ -281,7 +281,12 @@ Turn it on with F4 or in Menu → Practice. Health refills a moment after each
 combo ends (so you can still read the damage) and the round clock stops.
 In Killer Instinct this works on each of a fighter's two health bars.
 Turn **Health refill** off in the same menu to keep the clock stopped but
-let damage add up, for example to bring the opponent down to their last bar.
+let damage add up.
+
+To practise Ultras, set **Player 2 health** (same menu) to **Last bar** or
+**Last bar, low**: player 2 is put on their last health bar, full or low
+enough for an Ultra (20 of 120), at the start of a round and again after
+each combo. With Health refill off it's set once and the damage then stays.
 
 For a sparring partner, start a two-player game (press 2 to join), then:
 

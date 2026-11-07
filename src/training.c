@@ -14,7 +14,9 @@
 #define TIMER_TICK  game.timer_tick     // frames until the clock ticks
 #define TIMER_ONES  game.timer_ones
 #define TIMER_TENS  game.timer_tens
+#define BARS_P1     game.bars_p1
 #define REFILL_DELAY 45         // frames without damage before health refills
+#define LOW_HEALTH  20          // below every low-health threshold found (KI2's danger starts at 24)
 
 static void poke8(uint32_t off, uint8_t v)
 {
@@ -37,6 +39,20 @@ void training_apply(bool real)
         if (real) {
             if (h == hp[p].last) hp[p].still++;
             else { hp[p].last = h; hp[p].still = 0; }
+        }
+        // player 2 kept on the last bar, full or low, to practise Ultras:
+        // set at the start of a round and after each combo. Without refill
+        // it only ever lowers health, so damage still adds up.
+        if (p == 1 && cfg.training_p2 && BARS_P1) {
+            uint32_t boff = BARS_P1 + HEALTH_STEP;
+            int target = cfg.training_p2 == 2 ? LOW_HEALTH : HEALTH_MAX;
+            int want = cfg.training_refill || h > target ? target : h;
+            if (ram2[boff] <= 1 && h && hp[p].still >= REFILL_DELAY && (ram2[boff] != 1 || h != want)) {
+                poke8(boff, 1);
+                poke8(off, (uint8_t)want);
+                if (real) hp[p].last = (uint8_t)want;
+            }
+            continue;
         }
         // refill once a combo is over; a KO (0) is left to the game
         if (cfg.training_refill && h && h < HEALTH_MAX && hp[p].still >= REFILL_DELAY) {

@@ -24,6 +24,7 @@ typedef struct {
 static const char *const family_names[] = { "auto", "xbox", "playstation", "switch", "positions", 0 };
 static const char *const scale_names[] = { "fit", "integer", "stretch", 0 };
 static const char *const pacing_names[] = { "auto", "audio", "vsync", 0 };
+static const char *const p2_health_names[] = { "full", "last_bar", "low", 0 };
 static const char *const blood_names[] = { "none", "low", "medium", "high", 0 };
 static const char *const blood_colour_names[] = { "red", "white", 0 };
 static const char *const filter_names[] = { "sharp", "smooth", "scanlines", "crt", 0 };
@@ -123,6 +124,9 @@ static void build_table(void)
         "training mode: health refills after each combo, the clock stops (start a 2-player game for a dummy)", 0);
     add("system", "training_refill", T_BOOL, &cfg.training_refill, "yes",
         "training mode refills health after each combo (no: health stays down, the clock still stops)", 0);
+    add("system", "training_p2_health", T_ENUM, &cfg.training_p2, "full",
+        "training mode, player 2: full (both bars), last_bar (their last bar, full), low (last bar, low enough for an Ultra)",
+        p2_health_names);
     static char version_help[160] = "game version: ";
     if (!version_help[14])
         for (int v = 0; v < 4 && game.versions[v].label; v++) {
