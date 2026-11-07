@@ -280,6 +280,8 @@ Without OpenGL the game falls back to plain SDL drawing (sharp or smooth).
 Turn it on with F4 or in Menu → Practice. Health refills a moment after each
 combo ends (so you can still read the damage) and the round clock stops.
 In Killer Instinct this works on each of a fighter's two health bars.
+Turn **Health refill** off in the same menu to keep the clock stopped but
+let damage add up, for example to bring the opponent down to their last bar.
 
 For a sparring partner, start a two-player game (press 2 to join), then:
 

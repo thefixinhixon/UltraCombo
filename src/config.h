@@ -50,6 +50,7 @@ typedef struct {
     bool input_display;
     bool perf_overlay;
     bool training;             // health refill + timer freeze
+    bool training_refill;      // training mode refills health (else only the clock stops)
     // the board's DIP switches
     bool free_play;
     char version[16];

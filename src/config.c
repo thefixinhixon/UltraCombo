@@ -121,6 +121,8 @@ static void build_table(void)
     add("system", "input_display", T_BOOL, &cfg.input_display, "no", "show both players' recent inputs (numpad notation)", 0);
     add("system", "training", T_BOOL, &cfg.training, "no",
         "training mode: health refills after each combo, the clock stops (start a 2-player game for a dummy)", 0);
+    add("system", "training_refill", T_BOOL, &cfg.training_refill, "yes",
+        "training mode refills health after each combo (no: health stays down, the clock still stops)", 0);
     static char version_help[160] = "game version: ";
     if (!version_help[14])
         for (int v = 0; v < 4 && game.versions[v].label; v++) {

@@ -39,7 +39,7 @@ void training_apply(bool real)
             else { hp[p].last = h; hp[p].still = 0; }
         }
         // refill once a combo is over; a KO (0) is left to the game
-        if (h && h < HEALTH_MAX && hp[p].still >= REFILL_DELAY) {
+        if (cfg.training_refill && h && h < HEALTH_MAX && hp[p].still >= REFILL_DELAY) {
             poke8(off, HEALTH_MAX);
             if (real) hp[p].last = HEALTH_MAX;
         }
