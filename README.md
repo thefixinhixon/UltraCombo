@@ -114,7 +114,8 @@ ROMs, and compiles it into a native module. That takes about a
 minute, once; the module is cached in `cache/` (a new one is made if the
 game files change). The compiler used is the first that works of:
 
-1. Zig, bundled in `tools/zig`, which the release packages include
+1. Zig, bundled in `tools/zig`, which the release packages include (it
+   needs Windows 10 or later, so Windows 7 and 8 skip it)
 2. a C compiler already installed (`cc`, `gcc` or `clang`)
 3. TinyCC, bundled in `tools/tcc`: it builds in seconds, but its code runs
    at roughly half the speed (still well above full speed on most PCs)

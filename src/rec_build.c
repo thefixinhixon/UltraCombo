@@ -171,6 +171,9 @@ static bool run_all(cmd_t *cmds, int n, int parallel, const char *log, void (*ti
     HANDLE running[MAX_JOBS];
     int nrun = 0;
     SECURITY_ATTRIBUTES sa = { sizeof sa, NULL, TRUE };
+    // a compiler that can't start or crashes must fail quietly, not stop the
+    // build with a Windows message box (children inherit this)
+    UINT error_mode = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     HANDLE out = CreateFileA(log, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     while (done < n) {
         while (nrun < parallel && next < n && ok) {
@@ -211,6 +214,7 @@ static bool run_all(cmd_t *cmds, int n, int parallel, const char *log, void (*ti
     }
     for (int i = 0; i < nrun; i++) { WaitForSingleObject(running[i], INFINITE); CloseHandle(running[i]); }
     if (out != INVALID_HANDLE_VALUE) CloseHandle(out);
+    SetErrorMode(error_mode);
 #else
     pid_t running[MAX_JOBS];
     int nrun = 0;
@@ -473,13 +477,30 @@ bool rec_build_load_cached(char *msg, size_t msglen)
     return false;
 }
 
+// The bundled Zig (0.17) needs Windows 10 or later: on Windows 7 or 8 it
+// can't start, so it isn't tried there.
+static bool zig_runs_here(void)
+{
+#ifdef _WIN32
+    typedef LONG (WINAPI *get_version_fn)(OSVERSIONINFOW *);
+    get_version_fn get = (get_version_fn)(void *)GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion");
+    OSVERSIONINFOW v = { sizeof v };        // (GetVersionEx would say 8 on any later Windows)
+    if (get && get(&v) == 0 && v.dwMajorVersion < 10) {
+        fprintf(stderr, "rec: Windows %lu.%lu: the bundled Zig needs Windows 10, trying the other compilers\n",
+                (unsigned long)v.dwMajorVersion, (unsigned long)v.dwMinorVersion);
+        return false;
+    }
+#endif
+    return true;
+}
+
 static bool compile_and_load(const char *src, const char *module, const char *log, char *msg, size_t msglen)
 {
     char cc[2048], err[512] = "";
     const char *only = getenv("KI2_BUILD_WITH");         // testing: zig, cc or tcc
     // 1. a bundled Zig
     snprintf(cc, sizeof cc, "%stools/zig/zig" EXE_EXT, base_dir());
-    if (file_exists(cc) && (!only || !strcmp(only, "zig"))) {
+    if (file_exists(cc) && (!only || !strcmp(only, "zig")) && zig_runs_here()) {
         char zc[2200];
         snprintf(zc, sizeof zc, "%scache/zig", data_dir());       // kept across builds
 #ifdef _WIN32
