@@ -56,6 +56,7 @@ typedef struct {
     int  blood_colour;           // 0 red, 1 white (games with that switch)            // game version label (game.versions); empty = the default
     int  blood;                // 0 none, 1 low, 2 medium, 3 high
     bool finishing_moves, demo_sounds;
+    int  disk_speed;           // 0 original drive timing, 1 instant
     char net_address[1024];    // last host joined
     int  net_port;
     int  net_delay;            // frames of input delay (0-4)

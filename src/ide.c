@@ -4,6 +4,7 @@
 // settings file of their own by ide_flush(); the image itself stays as it is.
 #include "ide.h"
 #include "cpu.h"
+#include "mem.h"
 #include "third_party/libchdr/include/libchdr/chd.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +57,8 @@ static struct {
     int64_t irq_delay;    // cycles until IRQ asserts (<0: none pending)
     bool irq;
     uint16_t identify[256];
+    bool seeking;         // the next sector is the first of a command
+    uint32_t next_lba;    // where the heads are after the last read
 } d;
 
 uint8_t ide_dirty[IDE_TRACK_PAGES];
@@ -319,6 +322,29 @@ static void set_lba_regs(uint32_t lba)
 
 static void schedule_irq(void) { d.irq_delay = 200; }
 
+// The cabinet's drive took time to find and read data, and the games rely on
+// it: the VS screen waits for the fight's data while the announcer finishes.
+// Typical figures for an early-1990s IDE drive, in CPU cycles (100 MHz).
+#define SEEK_CYCLES   1700000     // average seek plus half a turn (~17 ms)
+#define CMD_CYCLES     100000     // command overhead when the heads are already there (1 ms)
+#define SECTOR_CYCLES   25600     // 512 bytes at ~2 MB/s
+
+// Sector data is ready: after the drive's time, or at once with an instant disk.
+static void sector_ready(void)
+{
+    if (hw.instant_disk) {
+        d.status = ST_DRDY | ST_DSC | ST_DRQ;
+        schedule_irq();
+        return;
+    }
+    int64_t t = SECTOR_CYCLES;
+    if (d.seeking) t += d.lba == d.next_lba ? CMD_CYCLES : SEEK_CYCLES;
+    d.seeking = false;
+    d.next_lba = d.lba + 1;
+    d.status = ST_BSY;          // ide_tick sets DRQ when the time is up
+    d.irq_delay = t;
+}
+
 static void fill_read_buf(void)
 {
     if (d.lba >= d.total) {
@@ -329,8 +355,7 @@ static void fill_read_buf(void)
     }
     read_sector(d.lba, d.buf);
     d.buf_pos = 0;
-    d.status = ST_DRDY | ST_DSC | ST_DRQ;
-    schedule_irq();
+    sector_ready();
 }
 
 static void command(uint8_t c)
@@ -356,6 +381,7 @@ static void command(uint8_t c)
         d.lba = cur_lba();
         d.remaining = d.count ? d.count : 256;
         d.reading = true;
+        d.seeking = true;
         fill_read_buf();
         return;
     case 0x30: case 0x31: case 0xc5: // WRITE SECTORS / WRITE MULTIPLE
@@ -467,6 +493,9 @@ void ide_tick(int cycles)
 {
     if (d.irq_delay >= 0) {
         d.irq_delay -= cycles;
-        if (d.irq_delay < 0) set_irq(true);
+        if (d.irq_delay < 0) {
+            if (d.reading && (d.status & ST_BSY)) d.status = ST_DRDY | ST_DSC | ST_DRQ;
+            set_irq(true);
+        }
     }
 }

@@ -133,6 +133,9 @@ static void build_table(void)
         add("game", "blood_colour", T_ENUM, &cfg.blood_colour, "red", "red or white", blood_colour_names);
     add("game", "finishing_moves", T_BOOL, &cfg.finishing_moves, "yes", "Ultra combos and No Mercy finishers", 0);
     add("game", "demo_sounds", T_BOOL, &cfg.demo_sounds, "yes", "sound during the attract mode", 0);
+    static const char *const disk_speed_names[] = { "original", "instant", 0 };
+    add("game", "disk_speed", T_ENUM, &cfg.disk_speed, "original",
+        "original: the cabinet's hard disk timing (the VS screen waits while the fight loads, so the announcer finishes); instant: no waiting", disk_speed_names);
     add_str("netplay", "address", cfg.net_address, "", "host to join (name or IP, optionally :port)");
     add("netplay", "port", T_INT, &cfg.net_port, "7845", "UDP port to host on (forward it on your router, or use a VPN such as Tailscale)", 0);
     add("netplay", "input_delay", T_INT, &cfg.net_delay, "2",

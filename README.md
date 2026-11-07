@@ -225,6 +225,10 @@ together count as neither, up and down together as up, like fight sticks),
 - **Free play, blood level, finishing moves, attract-mode sound** and, in
   Killer Instinct, **blood colour** (red or white): the board's DIP
   switches, read at power-on, so they apply after Reset.
+- **Disk loading** (Original drive or Instant): Original drive takes as long
+  as the cabinet's hard disk did, so the VS screen holds while the fight
+  loads and the announcer finishes, as in the arcade. Instant skips the wait.
+  It applies straight away; in netplay the host's choice applies to both.
 - Volume, mute or pause in the background, auto-coin (UltraCombo 2),
   run-ahead and rewind.
 

@@ -482,6 +482,7 @@ static void load_state(void)
     if (!f) { osd_message("State %d is empty", slot()); return; }
     fclose(f);
     if (!state_load_file(path)) { osd_message("State %d is from another version", slot()); return; }
+    hw.instant_disk = cfg.disk_speed == 1;      // a preference, not part of the moment saved
     ac.active = false;
     if (frame_count < (uint64_t)cfg.boot_skip_frames) frame_count = (uint64_t)cfg.boot_skip_frames;
     stop_audio();
@@ -508,6 +509,7 @@ static int boot_difficulty;          // as read when the machine last powered on
 static void hard_reset(void)
 {
     hw.dsw = config_dsw();
+    hw.instant_disk = cfg.disk_speed == 1;
     machine_reset();
     boot_difficulty = adjust_difficulty();
     apply_rewind_setting();
@@ -531,7 +533,7 @@ enum { G_FULLSCREEN, G_MODE, G_WINDOW, G_SCALE, G_SHADER, G_PARAMS, G_PACING, G_
 // Controls
 enum { C_P1, C_P2, C_PAD, C_HOTKEYS, C_PADHOT, C_SOCD, C_RUMBLE, C_DEADZONE, C_P1LABELS, C_P2LABELS, C_BACK, C_COUNT };
 // Game & system
-enum { S_VOLUME, S_MUTE_BG, S_PAUSE_BG, S_VERSION, S_DIFFICULTY, S_FREEPLAY, S_BLOOD, S_BLOODCOL, S_FINISH, S_DEMO, S_AUTOCOIN, S_RUNAHEAD, S_REWIND, S_BACK, S_COUNT };
+enum { S_VOLUME, S_MUTE_BG, S_PAUSE_BG, S_VERSION, S_DIFFICULTY, S_FREEPLAY, S_BLOOD, S_BLOODCOL, S_FINISH, S_DEMO, S_DISK, S_AUTOCOIN, S_RUNAHEAD, S_REWIND, S_BACK, S_COUNT };
 // Practice
 enum { T_TRAINING, T_INPUTS, T_RECORD, T_PLAY, T_BACK, T_COUNT };
 // Netplay
@@ -770,6 +772,7 @@ static void draw_menu(uint32_t *out)
         snprintf(b[S_BLOODCOL], 72, "Blood colour\t< %s >%s", cfg.blood_colour ? "White" : "Red", pending ? "*" : "");
         snprintf(b[S_FINISH], 72, "Finishing moves\t%s", onoff[cfg.finishing_moves]);
         snprintf(b[S_DEMO], 72, "Attract-mode sound\t%s", onoff[cfg.demo_sounds]);
+        snprintf(b[S_DISK], 72, "Disk loading\t< %s >", cfg.disk_speed ? "Instant" : "Original drive");
         snprintf(b[S_AUTOCOIN], 72, "Auto-coin\t%s", cfg.free_play ? "(free play)" : onoff[cfg.auto_coin]);
         int ra = cfg.run_ahead < 0 ? 0 : cfg.run_ahead > 2 ? 2 : cfg.run_ahead;
         snprintf(b[S_RUNAHEAD], 72, "Run-ahead (less lag)\t< %s >", ra_names[ra]);
@@ -1023,6 +1026,11 @@ static void menu_change(int dir)
         case S_BLOODCOL: cfg.blood_colour = !cfg.blood_colour; break;
         case S_FINISH: cfg.finishing_moves = !cfg.finishing_moves; break;
         case S_DEMO: cfg.demo_sounds = !cfg.demo_sounds; break;
+        case S_DISK:
+            if (in_netplay()) { not_in_netplay(); return; }
+            cfg.disk_speed = !cfg.disk_speed;
+            hw.instant_disk = cfg.disk_speed == 1;          // the drive needs no power-cycle
+            break;
         case S_AUTOCOIN: cfg.auto_coin = !cfg.auto_coin; break;
         case S_RUNAHEAD: cycle(&cfg.run_ahead, 3, d); break;
         case S_REWIND: cfg.rewind = !cfg.rewind; if (!in_netplay()) apply_rewind_setting(); break;
@@ -1477,7 +1485,7 @@ int frontend_main(void)
             else SDL_Delay(16);
             continue;
         }
-        if (was_netplay) { was_netplay = false; choose_pacing(); apply_rewind_setting(); hw.dsw = config_dsw(); }
+        if (was_netplay) { was_netplay = false; choose_pacing(); apply_rewind_setting(); hw.dsw = config_dsw(); hw.instant_disk = cfg.disk_speed == 1; }
         if (netplay_active()) {                        // connecting: keep playing locally meanwhile
             netplay_update(0);
             if (netplay_running()) continue;           // the session just reset the machine: no local frame

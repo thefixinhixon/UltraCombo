@@ -33,6 +33,7 @@ void     io_write(uint32_t pa, uint32_t val, int size);
 typedef struct {
     uint32_t vram_control, sound_reset, sound_control, sound_data, coin_control;
     uint32_t p1, p2, volume, dsw;   // active-low inputs
+    uint32_t instant_disk;          // 1: no drive timing (a setting, like the switches)
 } hw_t;
 extern hw_t hw;
 

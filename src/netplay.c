@@ -16,7 +16,7 @@
 #include <string.h>
 
 #define MAGIC 0x4e32494bu        // "KI2N"
-#define VERSION 1
+#define VERSION 2
 #define RING 256
 #define MAX_PREDICT 8            // never run further ahead of the opponent than this
 #define TIMEOUT_MS 3000
@@ -53,7 +53,7 @@ static bool     got_input;           // the peer's first input packet has arrive
 static uint8_t disk_buf[IDE_TRACK_BYTES];
 static uint8_t own_disk[IDE_TRACK_BYTES];   // guest: its own settings, put back after the session
 static bool own_disk_saved;
-static uint32_t host_dsw;
+static uint32_t host_dsw, host_instant_disk;
 
 // The guest plays on the host's settings sectors; afterwards its own come back
 // (they reach the disk image file on the next flush).
@@ -182,6 +182,7 @@ static void begin_session(void)
         memcpy(ide_tracked(), disk_buf, IDE_TRACK_BYTES);
         ide_tracked_changed();
         hw.dsw = host_dsw;
+        hw.instant_disk = host_instant_disk;
     }
     reset_cb();
     state_set_history((size_t)64 << 20);
@@ -350,6 +351,7 @@ static void handle_packet(const uint8_t *b, int n, const net_addr_t *from)
         put8(&p, (uint8_t)reason);
         put8(&p, (uint8_t)delay);
         put32(&p, hw.dsw);                      // the host's DIP switches apply to both
+        put8(&p, (uint8_t)hw.instant_disk);     // ...and its disk timing
         send_pkt(&p);
         if (reason) {
             static const char *const why[] = { "", "different program version", "different ROM or build", "different disk image" };
@@ -371,11 +373,13 @@ static void handle_packet(const uint8_t *b, int n, const net_addr_t *from)
         {
             int reason = get8(&r), d = get8(&r);
             uint32_t dsw = get32(&r);
-            if (r.bad) return;
-            host_dsw = dsw;
             static const char *const why[] = { "", "the host runs a different program version",
                                                "the host has a different ROM or build", "the host has a different disk image" };
-            if (reason) { fail(why[reason > 3 ? 3 : reason]); return; }
+            if (!r.bad && reason) { fail(why[reason > 3 ? 3 : reason]); return; }   // before fields an older host lacks
+            int instant = get8(&r);
+            if (r.bad) return;
+            host_dsw = dsw;
+            host_instant_disk = instant != 0;
             delay = d;
             state = NP_RECV_DISK;
             snprintf(status, sizeof status, "Connected, syncing");

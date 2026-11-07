@@ -71,6 +71,14 @@ has been seen. `ide_image_id()` hashes the contents, so a raw image and a CHD
 of the same disk share cached builds, states and netplay. The profile holds
 MAME's CRC32s and CHD SHA1, and the files are checked at startup.
 
+Reads take the time the cabinet's drive took (`ide.c`: seek, command
+overhead, ~2 MB/s per sector) unless `disk_speed = instant`. The games
+depend on it: the VS screen holds while the fight loads, and the announcer
+finishes (issue #10). The figures are typical early-1990s drive numbers, not
+measured on a cabinet. The setting is `hw.instant_disk`, kept like the DIP
+switches: in states, and the host's value applies in netplay. Instant
+emulates exactly as before drive timing existed.
+
 ## Determinism (netplay, rewind and run-ahead depend on it)
 
 - Emulation must be bit-identical across compilers (gcc, clang/Zig, MinGW,
@@ -149,6 +157,8 @@ Useful environment variables:
 - `KI2_NOREC=1`: interpreter only, which gives a different but also fixed hash.
 - `KI2_NOADSP=1`: sound DSP on the interpreter, game code still translated
   (same hash either way).
+- `KI2_DISK=original|instant`: drive timing, overriding the setting
+  (`regress.sh` pins `original`, the default).
 - `KI2_LOAD_MODULE=path.so`: use a given module.
 - `KI2_BUILD=1 KI2_BUILD_WITH=zig|cc|tcc`: build the module now, headless,
   with that compiler.
@@ -187,7 +197,7 @@ for details): `KI2_LOG_EXC`, `KI2_LOG_IDE` and `KI2_LOG_SOUND` (logging; also th
 `KI2_DUMP_AT` (RAM snapshot at a frame), `KI2_WAV` (record audio, output is
 game-derived), `KI2_CONSOLE` (Windows: log to the console instead of
 `ki2.log`). `KI2_DUMP_AT` also takes a list (`F1,F2,...` → `ram2_<F>.bin`),
-`KI2_TRAINING=1` applies training mode headless, `KI2_SWITCH_TEST=N:V`
+`KI2_TRAINING=N` applies training mode headless from frame N, `KI2_SWITCH_TEST=N:V`
 switches to game version V after N frames (must equal a fresh start).
 
 Finding a game's RAM locations: run two deterministic headless scripts

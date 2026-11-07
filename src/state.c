@@ -14,7 +14,7 @@
 #define PAGE 4096
 #define NPAGES (RAM_PAGES + IDE_TRACK_PAGES)
 #define FILE_MAGIC "KI2STATE"
-#define FILE_VERSION 1
+#define FILE_VERSION 2      // 2: drive timing in the disk and board state
 
 static uint8_t *mirror;             // every page as of the last checkpoint
 static uint8_t *core, *core_tmp;    // non-paged state at the last checkpoint

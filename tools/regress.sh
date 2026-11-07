@@ -29,6 +29,7 @@ inputs=$(realpath "$(dirname "$0")/regress-$game.txt")
 image=$(realpath "${DISK:-$run/$disk}")
 rom=${ROM:-$rom}
 export KI2_DSW=${KI2_DSW:-fffff1ff}     # blood high, demo sounds, finishing moves, free play
+export KI2_DISK=${KI2_DISK:-original}  # the default drive timing
 mkdir -p "$work"
 cp "$head" "$work/$game.settings"
 cd "$work"

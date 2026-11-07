@@ -266,8 +266,8 @@ void machine_reset(void)
 {
     memset(ram, 0, RAM_SIZE);
     memset(&m, 0, sizeof m);
-    uint32_t dsw = hw.dsw;     // switches stay as set
-    hw = (hw_t){ .p1 = 0xffffffffu, .p2 = 0xffffffffu, .volume = 0xffffffffu, .dsw = dsw };
+    uint32_t dsw = hw.dsw, instant = hw.instant_disk;     // settings stay as set
+    hw = (hw_t){ .p1 = 0xffffffffu, .p2 = 0xffffffffu, .volume = 0xffffffffu, .dsw = dsw, .instant_disk = instant };
     sound_power_on();
     ide_power_on();
     cpu_reset();
@@ -784,6 +784,7 @@ int main(int argc, char **argv)
     if (recomp_args) return recomp_snapshot(recomp_args[0], recomp_args[1], recomp_args[2]);
     check_files(rom_path, sound_dir);
     hw.dsw = getenv("KI2_DSW") ? (uint32_t)strtoul(getenv("KI2_DSW"), 0, 16) : config_dsw();
+    hw.instant_disk = getenv("KI2_DISK") ? !strcmp(getenv("KI2_DISK"), "instant") : cfg.disk_speed == 1;
     cpu_reset();
     rec_init();
     if (getenv("KI2_LOAD_MODULE")) {        // testing: a module built by hand
@@ -840,7 +841,7 @@ int main(int argc, char **argv)
         for (int f = (int)machine_frame() + 1; f <= headless; f++) {
             if (trace_from && f == trace_from) cpu_trace = true;
             apply_script(f);
-            if (getenv("KI2_TRAINING")) { cfg.training = true; training_apply(true); }   // testing
+            if (getenv("KI2_TRAINING") && f >= atoi(getenv("KI2_TRAINING"))) { cfg.training = true; training_apply(true); }   // testing: from frame N
             uint64_t t0 = SDL_GetPerformanceCounter();
             run_frame();
             state_checkpoint();
