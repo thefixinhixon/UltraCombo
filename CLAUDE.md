@@ -160,6 +160,8 @@ Useful environment variables:
 - `KI2_DISK=original|instant`: drive timing, overriding the setting
   (`regress.sh` pins `original`, the default).
 - `KI2_LOAD_MODULE=path.so`: use a given module.
+- `KI2_DISPLAY_HZ=N`: pretend the display refreshes at N Hz, to test frame
+  pacing (under Xvfb vsync never waits, so ~60 Hz falls back to audio).
 - `KI2_BUILD=1 KI2_BUILD_WITH=zig|cc|tcc`: build the module now, headless,
   with that compiler.
 

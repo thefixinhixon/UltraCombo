@@ -341,6 +341,14 @@ skip.
 The games run at 58.96 Hz. With `pacing = auto` a ~60 Hz display is driven
 by vsync for perfectly smooth motion (the game runs 1.7% fast to match);
 other refresh rates are timed by the sound card at the original speed.
+`pacing = vsync` also keeps a 120 Hz or 144 Hz display tear-free, with the
+game timed by the clock at its own speed.
+
+If vsync doesn't actually wait for the display (a graphics driver setting
+can force it off), the program notices within a few seconds, says "Vsync
+isn't working here", and times the game by the sound card instead, and the
+menu shows Frame pacing as "not working". Choosing Frame pacing again tries
+vsync again.
 
 ## Building
 

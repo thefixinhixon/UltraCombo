@@ -43,6 +43,8 @@ static uint32_t px[320 * 240];     // game image
 static uint32_t ov[320 * 240];     // overlay: messages, menu, input display
 
 static bool paused, step_once, fullscreen, muted, vsync;
+static bool vsync_lock;     // vsync on a ~60 Hz display: one game frame per refresh
+static bool vsync_broken;   // vsync turned out not to wait for the display: audio pacing
 static bool focused = true;
 static bool apply_shader(void);
 static int  volume;
@@ -90,18 +92,50 @@ static double queued_ms(void)
 /* Video                                                            */
 /* ---------------------------------------------------------------- */
 
-// Display-locked pacing is used when the display runs close to 60 Hz.
+// On a ~60 Hz display, vsync runs one game frame per refresh (smooth, 1.7%
+// fast). Vsync on any other display stays tear-free but the game is timed by
+// the clock, at its own speed: one frame per refresh would run a 144 Hz
+// display at 2.4x. Auto uses vsync on ~60 Hz displays only. If vsync turns
+// out not to wait (a driver setting can force it off), audio pacing takes over.
 static void choose_pacing(void)
 {
     SDL_DisplayMode m;
     int idx = SDL_GetWindowDisplayIndex(win);
     display_hz = (idx >= 0 && SDL_GetCurrentDisplayMode(idx, &m) == 0 && m.refresh_rate) ? m.refresh_rate : 60;
-    bool want = cfg.pacing == PACING_VSYNC ||
-                (cfg.pacing == PACING_AUTO && display_hz >= 59 && display_hz <= 61);
-    if (want != vsync || !frame_count) {
+    if (getenv("KI2_DISPLAY_HZ")) display_hz = atof(getenv("KI2_DISPLAY_HZ"));   // testing
+    bool sixty = display_hz >= 59 && display_hz <= 61;
+    bool want = !vsync_broken && (cfg.pacing == PACING_VSYNC || (cfg.pacing == PACING_AUTO && sixty));
+    bool lock = want && sixty;
+    if (want != vsync || lock != vsync_lock || !frame_count) {
         vsync = want;
+        vsync_lock = lock;
         video_set_vsync(vsync);
-        fprintf(stderr, "video: %.0f Hz display, %s pacing\n", display_hz, vsync ? "vsync" : "audio");
+        fprintf(stderr, "video: %.0f Hz display, %s pacing\n", display_hz,
+                lock ? "vsync" : vsync ? "vsync display, clock-timed" : "audio");
+    }
+}
+
+// Called once per game frame in display-locked pacing. Vsync that works
+// can't present faster than the display refreshes; seeing far more for two
+// seconds running means it isn't waiting, and the game would run too fast.
+static void check_vsync(void)
+{
+    static uint64_t t0;
+    static int frames, strikes;
+    uint64_t now = SDL_GetPerformanceCounter(), f = SDL_GetPerformanceFrequency();
+    if (!t0 || !focused || now - t0 > 2 * f) { t0 = now; frames = strikes = 0; return; }   // fresh start
+    frames++;
+    if (now - t0 < f) return;
+    double rate = frames * (double)f / (double)(now - t0);
+    strikes = rate > display_hz * 1.25 + 5 ? strikes + 1 : 0;
+    t0 = now;
+    frames = 0;
+    if (strikes >= 2) {
+        fprintf(stderr, "video: vsync isn't waiting for the display (%.0f frames/s on %.0f Hz): audio pacing\n", rate, display_hz);
+        osd_message("Vsync isn't working here: timing by audio instead");
+        vsync_broken = true;
+        strikes = 0;
+        choose_pacing();
     }
 }
 
@@ -694,6 +728,7 @@ static void draw_menu(uint32_t *out)
         snprintf(b[G_SHADER], 72, "Shader\t< %s >", lbl);
         snprintf(b[G_PARAMS], 72, shader_param_count() ? "Shader parameters...\t%d" : "Shader parameters\t(none)", shader_param_count());
         snprintf(b[G_PACING], 72, "Frame pacing\t< %s%s >", pacing_names[cfg.pacing],
+                 cfg.pacing == PACING_AUDIO ? "" : vsync_broken ? ": not working" :
                  cfg.pacing == PACING_AUTO ? (vsync ? ": vsync" : ": audio") : "");
         snprintf(b[G_PERF], 72, "Performance overlay\t%s", onoff[cfg.perf_overlay]);
         snprintf(b[G_BACK], 72, "Back");
@@ -931,7 +966,7 @@ static void menu_change(int dir)
             break;
         }
         case G_PARAMS: if (!dir && shader_param_count()) go(PG_PARAMS, 0); return;
-        case G_PACING: cycle(&cfg.pacing, 3, d); choose_pacing(); break;
+        case G_PACING: cycle(&cfg.pacing, 3, d); vsync_broken = false; choose_pacing(); break;   // a choice: try vsync again
         case G_PERF: cfg.perf_overlay = !cfg.perf_overlay; break;
         case G_BACK: if (!dir) go(PG_MAIN, M_GRAPHICS); return;
         }
@@ -1537,11 +1572,20 @@ int frontend_main(void)
             continue;
         }
 
-        emulate_frame();
         int ahead = cfg.run_ahead < 0 ? 0 : cfg.run_ahead > 2 ? 2 : cfg.run_ahead;
         if (vsync) {
-            // one game frame per refresh; nudge the resampling so the audio
-            // queue stays near its target instead of slowly over- or underflowing
+            if (!vsync_lock) {
+                // vsync on a display that isn't ~60 Hz: tear-free, but a frame
+                // is emulated only when the clock says one is due
+                uint64_t now = SDL_GetPerformanceCounter();
+                if (now < next) { SDL_Delay(1); continue; }
+                next += (uint64_t)(freq / FRAME_HZ);
+                if (now > next + freq / 10) next = now;        // after a hitch: don't race to catch up
+            }
+            emulate_frame();
+            if (vsync_lock) check_vsync();
+            // nudge the resampling so the audio queue stays near its target
+            // instead of slowly over- or underflowing
             double q = queued_ms();
             if (adev && q < 5) {        // (re)starting or after a hitch: pad with silence
                 static int16_t silence[AUDIO_HZ / 10];
@@ -1552,9 +1596,11 @@ int frontend_main(void)
             double err = (q - latency) / latency;
             if (err > 1) err = 1;
             if (err < -1) err = -1;
-            pump_audio(false, display_hz / FRAME_HZ * (1 + 0.005 * err));
+            // locked: frames come display_hz times a second, so resample to match
+            pump_audio(false, (vsync_lock ? display_hz / FRAME_HZ : 1) * (1 + 0.005 * err));
             present_ahead(ahead);
         } else {
+            emulate_frame();
             pump_audio(false, 1);
             present_ahead(ahead);
             if (adev) {

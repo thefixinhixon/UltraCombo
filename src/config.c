@@ -94,8 +94,9 @@ static void build_table(void)
     add("video", "filter", T_ENUM, &cfg.filter, "sharp",
         "sharp (crisp pixels), smooth (sharpened bicubic), scanlines, crt (scanlines, mask, curvature)", filter_names);
     add("video", "pacing", T_ENUM, &cfg.pacing, "auto",
-        "audio: original 58.96 Hz timed by the sound card; vsync: one frame per display refresh"
-        " (smooth on 60 Hz, game runs 1.7% fast); auto: vsync on ~60 Hz displays, else audio", pacing_names);
+        "audio: original 58.96 Hz timed by the sound card; vsync: tear-free, one frame per refresh on"
+        " ~60 Hz displays (smooth, game runs 1.7% fast), timed by the clock on others; auto: vsync on ~60 Hz displays, else audio",
+        pacing_names);
 
     add("audio", "volume", T_INT, &cfg.volume, "100", "0-100", 0);
     add("audio", "latency_ms", T_INT, &cfg.audio_latency_ms, "70", "audio buffer; lower = less delay, more risk of crackle", 0);
