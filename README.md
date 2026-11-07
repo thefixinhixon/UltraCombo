@@ -391,7 +391,18 @@ the same inputs).
                     #    dist/UltraCombo-x86_64.AppImage and its .zsync
 
 These hold the program, Zig and TinyCC, SDL2 (Linux: in `lib/`), shaders and
-licences: no game files and no game code. They expect, in `deps/`:
+licences: no game files and no game code.
+
+Pushing a version tag (`git tag v1.2.0 && git push origin v1.2.0`) builds
+all of them on GitHub Actions (`.github/workflows/release.yml`) and attaches
+them to a draft pre-release for that tag: write the notes there and publish
+it. If a release for the tag already exists, the packages are added to it.
+Running the workflow by hand (Actions > Release > Run workflow) builds the
+packages without releasing.
+
+`tools/fetch-deps.sh` fetches and builds everything below into `deps/`,
+pinned by version and checksum (the workflow uses it; it lists the
+system packages it needs). `make packages` expects, in `deps/`:
 
 - Zig 0.17 for Linux and Windows (`zig-linux/`, `zig-windows/`);
 - TinyCC's `libtcc.so` built with that Zig against glibc 2.31
@@ -405,7 +416,9 @@ licences: no game files and no game code. They expect, in `deps/`:
   github.com/AppImage/type2-runtime).
 
 The Linux program is built with Zig against glibc 2.31, so it runs on
-distributions from about 2020 on. The AppImage is the Linux package packed
+distributions from about 2020 on, and on the Steam Deck, whatever glibc the
+build machine has. `tools/package.sh` refuses a build that needs a glibc
+symbol newer than 2.29. The AppImage is the Linux package packed
 with `mksquashfs` behind that runtime.
 
 The AppImage carries update information for AppImageUpdate: the newest

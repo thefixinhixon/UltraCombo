@@ -167,7 +167,11 @@ Packages (no game files, no game code):
 
     make packages        # dist/UltraCombo-Windows.zip, -Linux.tar.xz, -x86_64.AppImage (+ .zsync)
 
-These need, in `deps/`:
+Pushing a version tag builds them on GitHub Actions
+(`.github/workflows/release.yml`) into a draft pre-release.
+`tools/fetch-deps.sh` fills `deps/` from pinned, checksummed downloads; when
+a dependency changes, change it there (its checksum is the workflow's cache
+key). These need, in `deps/`:
 - Zig 0.17 for Linux and Windows;
 - `libtcc.so` built with Zig against glibc 2.31 (`tcc-lnx231/`), and `libtcc.dll` (`tcc-win/`);
 - SDL2 2.32.10 built with Zig (`sdl2-lnx/`), and the SDL2 MinGW package (`sdl2-mingw/`);
@@ -177,8 +181,8 @@ And `zsyncmake`: package `zsync`, or that package unpacked into `deps/zsync`. Ev
 `UltraCombo-x86_64.AppImage.zsync` beside the AppImage: the AppImage's
 update information points at it.
 
-See README.md, "Release packages". The Linux program targets glibc 2.31. Check
-any new library call with `objdump -T` (the most it may need is GLIBC_2.29).
+See README.md, "Release packages". The Linux program targets glibc 2.31.
+The most it may need is GLIBC_2.29; `tools/package.sh` checks that.
 
 Windows: `make windows` cross-compiles with MinGW. Zig won't run under Wine,
 so test the Windows module path with `KI2_BUILD_WITH=tcc` there; the Zig path

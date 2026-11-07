@@ -93,9 +93,12 @@ dist/windows/UltraCombo.exe: $(WIN_OBJ) build-win/ki2-res.o
 	$(WIN_CC) -o $@ $^ $(WIN_LIBS)
 
 # the icon is drawn by the program itself (no game art)
-build-win/ki2.ico: ultracombo
+# (ICON_TOOL: any build of the program for this machine; the release
+# workflow uses the Linux package's)
+ICON_TOOL ?= ./ultracombo
+build-win/ki2.ico: $(ICON_TOOL)
 	@mkdir -p build-win
-	./ultracombo --write-icon $@
+	$(ICON_TOOL) --write-icon $@
 
 build-win/ki2-res.o: src/ki2.rc build-win/ki2.ico
 	x86_64-w64-mingw32-windres -I build-win -o $@ src/ki2.rc
@@ -121,11 +124,12 @@ build-win/rec_headers.o: build/rec_headers.c
 # is built the same way into deps/sdl2-lnx and shipped in lib/ beside it.
 LNX_ZIG  ?= deps/zig-linux/zig
 LNX_SDL  ?= deps/sdl2-lnx/build/libSDL2-2.0.so.0
+LNX_SDL_INC ?= deps/sdl2-lnx/build/include/SDL2 deps/sdl2-lnx/build/include-config-release/SDL2
 LNX_SRC   = $(SRC) src/rec_none.c build/rec_headers.c src/third_party/libchdr_all.c
 
 build-lnx/ultracombo: $(LNX_SRC) src/*.h
 	mkdir -p build-lnx/inc/SDL2
-	for d in $(shell pkg-config --cflags-only-I sdl2 | sed "s/-I//g") $(wildcard /usr/include/*-linux-gnu/SDL2); do ln -sf $$d/*.h build-lnx/inc/SDL2/; done
+	for d in $(LNX_SDL_INC); do ln -sf $(CURDIR)/$$d/*.h build-lnx/inc/SDL2/; done
 	$(LNX_ZIG) cc -target x86_64-linux-gnu.2.31 -O2 -w -Ibuild-lnx/inc -Ibuild-lnx/inc/SDL2 $(CHDR_INC) -o $@ $(LNX_SRC) \
 	    $(LNX_SDL) -Wl,-rpath,'$$ORIGIN/lib' -lm -ldl
 

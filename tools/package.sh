@@ -98,6 +98,13 @@ if [ $target = linux ]; then
     mkdir -p "$out/lib"
     cp -L "$3" "$out/lib/libSDL2-2.0.so.0"
     strip --strip-unneeded "$out/lib/libSDL2-2.0.so.0"
+    # runs on glibc 2.31 and later (Steam Deck, older distributions): nothing
+    # may need a newer glibc symbol than 2.29
+    for f in "$out/ultracombo" "$out/lib/libSDL2-2.0.so.0" "$out/tools/tcc/libtcc.so"; do
+        v=$(objdump -T "$f" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -1)
+        [ "$(printf '%s\n2.29\n' "$v" | sort -V | tail -1)" = 2.29 ] || { echo "$f needs glibc $v (at most 2.29 allowed)" >&2; exit 1; }
+        echo "$(basename "$f"): needs glibc $v"
+    done
 fi
 if [ $target = windows ]; then
     cp "$3" "$out/"

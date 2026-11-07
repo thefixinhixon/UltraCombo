@@ -1,0 +1,77 @@
+# Builds the three release packages when a version tag (v1.2.3) is pushed,
+# and attaches them to a draft pre-release for that tag. Edit the notes and
+# publish it on GitHub. Run it by hand (Actions > Release > Run workflow) to
+# build the packages without releasing: they appear as the run's artifact.
+#
+# No game files are involved: the packages hold no game code, which each
+# player's copy builds at first launch.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  packages:
+    # the Linux program and SDL2 are built with Zig against glibc 2.31,
+    # whatever the runner has, so they run on the Steam Deck and older distros
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools and SDL2's backend headers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -qy --no-install-recommends \
+            cmake ninja-build mingw-w64 squashfs-tools zsync zip xz-utils python3 \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev \
+            libegl-dev libgl-dev libgles-dev libdrm-dev libgbm-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev libsndio-dev \
+            libudev-dev libdbus-1-dev libibus-1.0-dev
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            !deps/zig-cache
+          key: deps-${{ hashFiles('tools/fetch-deps.sh') }}
+
+      - name: Fetch and build deps
+        run: tools/fetch-deps.sh
+
+      - name: Build packages
+        run: |
+          make shaders-extra        # the GPL extras, shipped as their source files
+          export ZIG_GLOBAL_CACHE_DIR=$PWD/deps/zig-cache ZIG_LOCAL_CACHE_DIR=$PWD/deps/zig-cache
+          make -j"$(nproc)" package-appimage
+          make -j"$(nproc)" package-windows ICON_TOOL=build-lnx/ultracombo
+          ls -la dist
+
+      - name: Keep the packages with the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltraCombo-packages
+          path: |
+            dist/UltraCombo-Windows.zip
+            dist/UltraCombo-Linux.tar.xz
+            dist/UltraCombo-x86_64.AppImage
+            dist/UltraCombo-x86_64.AppImage.zsync
+
+      - name: Draft a pre-release with the packages
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          files="dist/UltraCombo-Windows.zip dist/UltraCombo-Linux.tar.xz dist/UltraCombo-x86_64.AppImage dist/UltraCombo-x86_64.AppImage.zsync"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" $files --clobber     # a release made by hand for this tag
+          else
+            gh release create "$TAG" $files --draft --prerelease --title "UltraCombo $TAG" --generate-notes
+          fi
