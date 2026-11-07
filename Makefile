@@ -94,7 +94,7 @@ dist/windows/UltraCombo.exe: $(WIN_OBJ) build-win/ki2-res.o
 
 # the icon is drawn by the program itself (no game art)
 # (ICON_TOOL: any build of the program for this machine; the release
-# workflow uses the Linux package's)
+# workflow uses the Linux package's, which finds its SDL2 in lib/)
 ICON_TOOL ?= ./ultracombo
 build-win/ki2.ico: $(ICON_TOOL)
 	@mkdir -p build-win
