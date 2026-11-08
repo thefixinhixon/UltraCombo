@@ -458,6 +458,13 @@ next to the AppImage, or updating breaks.
 "Killer Instinct" is a trademark of its owners; this project is not
 affiliated with them. Keep that in mind when naming anything you publish.
 
+## Thanks
+
+To **CCCP1982**, whose testing, side-by-side videos with MAME and patient
+follow-ups found and helped fix the attract mode's missing music and wrong
+speed (#11), fighters flickering as they walk in (#5) and the training mode
+crash (#12).
+
 ## Licence
 
 UltraCombo is MIT-licensed (`LICENSE`). That covers this project's own code
