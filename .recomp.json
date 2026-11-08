@@ -1,1 +1,42 @@
-{"$schema":"https://recomp.fyi/schema/v1.json","approach":"Native PC port of the arcade original; one program with a game picker covering Killer Instinct and Killer Instinct 2","game":"Killer Instinct","help":["Native Windows testing of the bundled v1.0.0 build"],"maintainers":[{"link":"https://github.com/thefixinhixon","name":"thefixinhixon"}],"notes":"v1.0.0 published as a pre-release (Windows zip, Linux tarball and AppImage). No game files are included — supply your own arcade ROMs. The bundled Windows build is still awaiting a test on real Windows hardware. Killer Instinct 2 is described in .recomp-2.json in this repository.","project":"UltraCombo","status":"released","system":"Arcade","targets":["Windows","Linux"],"type":"port"}
+{
+  "$schema": "https://recomp.fyi/schema/v1.json",
+  "game": "Killer Instinct",
+  "system": "Arcade",
+  "type": "recomp",
+  "original": [
+    {
+      "revision": "1.5d",
+      "sha1": "81d833236e994528d1482979261401b198d1ca53"
+    },
+    {
+      "revision": "1.4",
+      "sha1": "81d833236e994528d1482979261401b198d1ca53"
+    }
+  ],
+  "project": "UltraCombo",
+  "status": "released",
+  "targets": [
+    "Windows",
+    "Linux"
+  ],
+  "toolchain": "UltraCombo's own MIPS-to-C and ADSP-2105-to-C translators",
+  "approach": "The original MIPS R4600 game code and the sound board's ADSP-2105 code are statically translated to C and compiled on the player's PC at first launch; the arcade board around them is emulated",
+  "maintainers": [
+    {
+      "name": "thefixinhixon",
+      "link": "https://github.com/thefixinhixon"
+    }
+  ],
+  "links": [
+    {
+      "label": "Releases",
+      "url": "https://github.com/thefixinhixon/UltraCombo/releases"
+    }
+  ],
+  "help": [
+    "Netplay testing with a real second player",
+    "Testing the first-launch build on Windows 7 and 8",
+    "Load-time measurements from a real cabinet's hard drive"
+  ],
+  "notes": "v1.2.5 (pre-release): Windows zip, Linux tarball and AppImage. One program with a game picker for Killer Instinct (version 1.5d, 1.4 as an option) and Killer Instinct 2 (see .recomp-2.json). Plays the whole game, authentic by default, with optional training mode, rollback netplay, save states, rewind, run-ahead and libretro shaders. The SHA-1 is of MAME's kinst.chd; no game files are included, players supply their own."
+}
