@@ -52,6 +52,7 @@ typedef struct {
     bool training;             // health refill + timer freeze
     bool training_refill;      // training mode refills health (else only the clock stops)
     int  training_p2;          // player 2's health in training: 0 full, 1 last bar, 2 last bar low
+    bool training_power;       // training keeps the combo breaker reward (KI2: a full super meter)
     // the board's DIP switches
     bool free_play;
     char version[16];

@@ -53,6 +53,12 @@ typedef struct {
     int health_max;
     uint32_t bars_p1;           // bars a fighter has lost (0, or 1 on the last), same step as health
     uint32_t timer_tick, timer_ones, timer_tens;   // round clock
+    // What a combo breaker earns (KI1: the spark on the life bar, KI2: the
+    // super meter), same step as health: training mode keeps it at least at
+    // power_full. power_name names the menu row.
+    uint32_t power_p1;
+    int power_full;
+    const char *power_name;
     uint32_t vars, vars_len;    // range of game variables for netplay's quick check
 
     // Operator adjustments on the disk: adj_len bytes at adj_data, the first

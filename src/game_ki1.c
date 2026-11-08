@@ -32,6 +32,9 @@ const game_t game_ki1 = {
 
     .health_p1 = 0x8bc55, .health_step = 0x100, .health_max = 120,   // each of the two bars
     .bars_p1 = 0x8bc8f,         // found with KI2_POKE: preset to 1, emptying the bar ends the match (v1.5d, v1.4)
+    // the spark at the end of the life bar: a level the game raises to at
+    // most 5, any of them drawn the same; a real breaker against the CPU left 3
+    .power_p1 = 0x8bcbb, .power_full = 3, .power_name = "Breaker spark",
     .timer_tick = 0x884f8, .timer_ones = 0x884f9, .timer_tens = 0x884fa,
     .vars = 0x880000, .vars_len = 0x10000,
 

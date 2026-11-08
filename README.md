@@ -288,6 +288,11 @@ To practise Ultras, set **Player 2 health** (same menu) to **Last bar** or
 enough for an Ultra (20 of 120), at the start of a round and again after
 each combo. With Health refill off it's set once and the damage then stays.
 
+To practise the moves a combo breaker unlocks, turn on the reward in the same
+menu. In Killer Instinct, **Breaker spark** keeps the white spark at the end
+of both players' life bars. In Killer Instinct 2, **Super meter full** keeps
+both super meters full.
+
 For a sparring partner, start a two-player game (press 2 to join), then:
 
 1. **F8**: record. Your controls now drive player 2 (up to 10 seconds).

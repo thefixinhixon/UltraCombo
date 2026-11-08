@@ -127,6 +127,8 @@ static void build_table(void)
     add("system", "training_p2_health", T_ENUM, &cfg.training_p2, "full",
         "training mode, player 2: full (both bars), last_bar (their last bar, full), low (last bar, low enough for an Ultra)",
         p2_health_names);
+    add("system", "training_power", T_BOOL, &cfg.training_power, "no",
+        "training mode keeps both players' combo breaker reward (UltraCombo: the spark on the life bar, UltraCombo 2: a full super meter)", 0);
     static char version_help[160] = "game version: ";
     if (!version_help[14])
         for (int v = 0; v < 4 && game.versions[v].label; v++) {

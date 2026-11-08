@@ -36,6 +36,11 @@ void training_apply(bool real)
         uint32_t off = HEALTH_P1 + (uint32_t)p * HEALTH_STEP;
         uint8_t h = ram2[off];
         if (h > HEALTH_MAX) continue;
+        // the combo breaker reward, kept on during a fight (only ever raised:
+        // the game may hold more)
+        uint32_t poff = game.power_p1 + (uint32_t)p * HEALTH_STEP;
+        if (cfg.training_power && game.power_p1 && h && ram2[poff] < game.power_full)
+            poke8(poff, (uint8_t)game.power_full);
         if (real) {
             if (h == hp[p].last) hp[p].still++;
             else { hp[p].last = h; hp[p].still = 0; }
