@@ -363,6 +363,11 @@ isn't working here", and times the game by the sound card instead, and the
 menu shows Frame pacing as "not working". Choosing Frame pacing again tries
 vsync again.
 
+The performance overlay (F10) shows the frames shown per second (about 59
+in a game, or 60 on a ~60 Hz display with vsync pacing; menus run at the
+display's rate), the sound queued, and the time spent emulating a frame.
+LOAD is that time as a share of a frame: under 100% the PC keeps up.
+
 ## Building
 
 Needs gcc, SDL2 and python3:

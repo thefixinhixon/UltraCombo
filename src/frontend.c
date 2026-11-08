@@ -215,7 +215,9 @@ static void draw_perf(uint32_t *ov)
     if (!cfg.perf_overlay) return;
     char l1[48], l2[48];
     snprintf(l1, sizeof l1, "%.1f FPS  AUDIO %.0f MS", perf.fps, queued_ms());
-    snprintf(l2, sizeof l2, "EMU %.2f MS  %.0f%% SPEED", perf.emu_ms, perf.emu_ms > 0 ? 100.0 * (1000.0 / FRAME_HZ) / perf.emu_ms : 0);
+    // load: the share of each frame's time spent emulating it (under 100% keeps
+    // up). Shown as a load rather than a speed, which read as the game running fast.
+    snprintf(l2, sizeof l2, "EMU %.2f MS  LOAD %.0f%%", perf.emu_ms, perf.emu_ms * FRAME_HZ / 10.0);
     int w = (int)(strlen(l1) > strlen(l2) ? strlen(l1) : strlen(l2)) * 6 + 6;
     osd_box(ov, 320 - w - 2, 240 - 34, w, 20, 0xb0000000u);
     osd_text(ov, 320 - w + 1, 240 - 32, l1, 0x80ff80);
