@@ -50,6 +50,7 @@ static bool apply_shader(void);
 static int  volume;
 static double display_hz;
 static uint64_t frame_count;
+static double last_emu_ms;          // how long the last real frame took to emulate
 
 /* ---------------------------------------------------------------- */
 /* Audio                                                            */
@@ -389,7 +390,9 @@ static void rumble_check(void)
 {
     static int last[2] = { -1, -1 };
     for (int p = 0; p < 2; p++) {
-        int h = game_health(p);
+        // only a person's fighter, in a fight on both frames: the game clears
+        // a fighter's health with the rest of its block when a fight ends
+        int h = game_player_is_human(p) ? game_health(p) : -1;
         int prev = last[p];
         last[p] = h;
         if (!cfg.rumble || h < 0 || prev < 0 || h >= prev) continue;
@@ -1325,6 +1328,7 @@ static void emulate_frame(void)
     frame_count++;
     rumble_check();
     perf_emu(t0);
+    last_emu_ms = (SDL_GetPerformanceCounter() - t0) * 1000.0 / SDL_GetPerformanceFrequency();
 }
 
 // Show the frame `run_ahead` frames in the future (same inputs), then
@@ -1583,6 +1587,12 @@ int frontend_main(void)
         }
 
         int ahead = cfg.run_ahead < 0 ? 0 : cfg.run_ahead > 2 ? 2 : cfg.run_ahead;
+        // Run-ahead multiplies the cost of a frame. When one gets too heavy for
+        // that (the games load and decode movies between scenes), it's paused
+        // for a second rather than starving the audio and dropping frames.
+        static int ahead_paused;
+        if (ahead && last_emu_ms * (ahead + 1) > 0.8 * 1000 / FRAME_HZ) ahead_paused = 60;
+        if (ahead_paused) { ahead_paused--; ahead = 0; }
         if (vsync) {
             if (!vsync_lock) {
                 // vsync on a display that isn't ~60 Hz: tear-free, but a frame

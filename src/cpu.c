@@ -239,6 +239,12 @@ static void cover_note_smc(uint32_t pa)
     cover[i >> 3] &= ~(1u << (i & 7));
 }
 
+// The boot EPROM is slow: each read waits for its RdRdy (MAME's figure,
+// kinst.cpp). Without the wait the blue boot screen is over too soon, before
+// the sound board is ready, and the attract mode plays without its music
+// (issue #11).
+#define ROM_WAIT_CYCLES 128
+
 #define DEF_LOAD(name, type, size)                                          \
     static inline type name(uint32_t va)                                    \
     {                                                                       \
@@ -246,7 +252,10 @@ static void cover_note_smc(uint32_t pa)
         if (va & (size - 1)) { cpu_exception(EXC_ADEL, va, true); return 0; } \
         if (!translate(va, false, &pa)) return 0;                           \
         uint8_t *p = mem_ptr(pa);                                           \
-        if (p) { type v; memcpy(&v, p, size); return v; }                   \
+        if (p) {                                                            \
+            if (pa >= 0x1fc00000u) cpu.cycles += ROM_WAIT_CYCLES;           \
+            type v; memcpy(&v, p, size); return v;                          \
+        }                                                                   \
         if (size == 8) {                                                    \
             uint64_t lo = io_read(pa, 4), hi = io_read(pa + 4, 4);          \
             return (type)(lo | (hi << 32));                                 \

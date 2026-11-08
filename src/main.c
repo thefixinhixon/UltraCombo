@@ -248,6 +248,8 @@ static void check_files(const char *rom_path, const char *sound_dir)
 
 static struct {
     int sound_acc;        // CPU cycles not yet passed on to the DCS
+    int cpu_over;         // cycles the CPU ran past its last slice, taken off the next
+                          // (in what was padding: older states load with 0)
     uint64_t frame;       // frames run since power-on
 } m;
 #define sound_acc m.sound_acc
@@ -256,7 +258,7 @@ uint64_t machine_frame(void) { return m.frame; }
 
 size_t machine_state(uint8_t *buf, bool load)
 {
-    if (buf && load) { memcpy(&m, buf, sizeof m); memcpy(&hw, buf + sizeof m, sizeof hw); }
+    if (buf && load) { memcpy(&m, buf, sizeof m); memcpy(&hw, buf + sizeof m, sizeof hw); video_invalidate(); }
     else if (buf) { memcpy(buf, &m, sizeof m); memcpy(buf + sizeof m, &hw, sizeof hw); }
     return sizeof m + sizeof hw;
 }
@@ -266,6 +268,7 @@ void machine_reset(void)
 {
     memset(ram, 0, RAM_SIZE);
     memset(&m, 0, sizeof m);
+    video_invalidate();
     uint32_t dsw = hw.dsw, instant = hw.instant_disk;     // settings stay as set
     hw = (hw_t){ .p1 = 0xffffffffu, .p2 = 0xffffffffu, .volume = 0xffffffffu, .dsw = dsw, .instant_disk = instant };
     sound_power_on();
@@ -279,16 +282,27 @@ void run_frame(void)
 {
     m.frame++;
     for (int line = 0; line < LINES; line++) {
-        if (line == VISIBLE_LINES) cpu_set_irq(0, true);
+        if (line == VISIBLE_LINES) { video_vblank(); cpu_set_irq(0, true); }
         if (line == 0) cpu_set_irq(0, false);
         int remaining = CYCLES_PER_LINE;
         while (remaining > 0) {
             int slice = remaining < 256 ? remaining : 256;
-            int ran = (int)cpu_run((uint64_t)slice);
-            if (cpu_idle) {
-                // spinning on an interrupt line: nothing changes until the next scanline
-                cpu_skip((uint64_t)(remaining - ran));
-                slice = remaining;
+            // Translated code stops only at the end of a block or loop, so it
+            // can run past the slice, and so can EPROM wait states. Paying
+            // that back keeps the CPU at 100 MHz against the video and sound;
+            // otherwise the games' Count-timed waits run fast (issue #11).
+            int want = slice - m.cpu_over;
+            if (want <= 0) m.cpu_over = -want;
+            else {
+                int ran = (int)cpu_run((uint64_t)want);
+                if (cpu_idle) {
+                    // spinning on an interrupt line: nothing changes until the next scanline
+                    int rest = remaining - slice + want;
+                    if (ran < rest) { cpu_skip((uint64_t)(rest - ran)); ran = rest; }
+                    want = rest;
+                    slice = remaining;
+                }
+                m.cpu_over = ran > want ? ran - want : 0;
             }
             ide_tick(slice);
             // DCS runs at 10 MHz against the 100 MHz R4600

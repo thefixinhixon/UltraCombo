@@ -340,7 +340,9 @@ Rewind keeps about 50 seconds by default (`rewind_mb = 256`).
 
 Killer Instinct 2 shows the result of an input one frame after it reads it.
 Run-ahead 1 hides that frame by quietly emulating one frame ahead each frame;
-it costs about one extra frame of CPU time. Killer Instinct has no such lag
+it costs about one extra frame of CPU time, and it pauses for a moment when a
+frame is too heavy to repeat (the games load and decode movies between
+scenes) instead of stuttering. Killer Instinct has no such lag
 (a press shows on the very next frame), so run-ahead is off by default for
 both, as the arcade played.
 

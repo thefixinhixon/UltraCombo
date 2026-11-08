@@ -130,3 +130,13 @@ int game_health(int player)
     bool fight = ram2[TIMER_ONES] <= 9 && ram2[TIMER_TENS] <= 9;
     return fight && h <= HEALTH_MAX ? h : -1;
 }
+
+// A person controls this fighter in a fight: not the computer (a 1-player
+// fight's opponent, attract mode demos) and not after the fight, when the
+// game clears the fighter's block.
+bool game_player_is_human(int player)
+{
+    if (!game.fighter_p1) return true;
+    const uint8_t *f = &ram2[game.fighter_p1 + (uint32_t)player * HEALTH_STEP];
+    return (f[1] & 0x80) && f[3] == 0;
+}

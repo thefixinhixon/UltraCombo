@@ -37,4 +37,6 @@ typedef struct {
 } hw_t;
 extern hw_t hw;
 
-const uint16_t *video_base(void);   // 320x240, 640-byte stride, BGR555
+const uint16_t *video_base(void);   // the picture: 320x240, 640-byte stride, BGR555
+void video_vblank(void);            // the display reached vblank: take the picture
+void video_invalidate(void);        // the machine state changed under it (reset, state load)

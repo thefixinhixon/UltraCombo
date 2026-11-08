@@ -15,6 +15,10 @@
 #define NPAGES (RAM_PAGES + IDE_TRACK_PAGES)
 #define FILE_MAGIC "KI2STATE"
 #define FILE_VERSION 2      // 2: drive timing in the disk and board state
+// Bumped when the emulation's timing changes without changing the state's
+// layout: states still load, but netplay won't pair differing builds.
+// 1: EPROM wait states, CPU slice overruns paid back, a 4 MB/s drive (issue #11)
+#define TIMING_VERSION 1
 
 static uint8_t *mirror;             // every page as of the last checkpoint
 static uint8_t *core, *core_tmp;    // non-paged state at the last checkpoint
@@ -251,7 +255,7 @@ static uint64_t rom_id(void) { return fnv(0xcbf29ce484222325ull, rom, ROM_SIZE);
 // Builds that can play together: same ROM, same recompiled code, same state layout.
 uint64_t state_compat_id(void)
 {
-    uint64_t h = rom_id() ^ ((uint64_t)core_len << 32) ^ FILE_VERSION;
+    uint64_t h = rom_id() ^ ((uint64_t)core_len << 32) ^ FILE_VERSION ^ ((uint64_t)TIMING_VERSION << 8);
     if (rec_enabled && rec_mod) {
         h = fnv(h, &rec_mod->nfuncs, sizeof rec_mod->nfuncs);
         h = fnv(h, &rec_mod->nlabels, sizeof rec_mod->nlabels);

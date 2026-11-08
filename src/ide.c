@@ -327,7 +327,8 @@ static void schedule_irq(void) { d.irq_delay = 200; }
 // Typical figures for an early-1990s IDE drive, in CPU cycles (100 MHz).
 #define SEEK_CYCLES   1700000     // average seek plus half a turn (~17 ms)
 #define CMD_CYCLES     100000     // command overhead when the heads are already there (1 ms)
-#define SECTOR_CYCLES   25600     // 512 bytes at ~2 MB/s
+#define SECTOR_CYCLES   12800     // 512 bytes at ~4 MB/s: at 2 MB/s KI1's attract mode falls behind
+                                  // its music, which cuts the logo's voice before Glacius (issue #11)
 
 // Sector data is ready: after the drive's time, or at once with an instant disk.
 static void sector_ready(void)

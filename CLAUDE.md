@@ -72,12 +72,33 @@ of the same disk share cached builds, states and netplay. The profile holds
 MAME's CRC32s and CHD SHA1, and the files are checked at startup.
 
 Reads take the time the cabinet's drive took (`ide.c`: seek, command
-overhead, ~2 MB/s per sector) unless `disk_speed = instant`. The games
+overhead, ~4 MB/s per sector) unless `disk_speed = instant`. The games
 depend on it: the VS screen holds while the fight loads, and the announcer
 finishes (issue #10). The figures are typical early-1990s drive numbers, not
-measured on a cabinet. The setting is `hw.instant_disk`, kept like the DIP
+measured on a cabinet. Slower isn't safer: at 2 MB/s KI1's attract mode
+fell ~4 s behind its music (which runs on the sound board's own clock) and
+the logo's "Killer Instinct" before Glacius was cut; MAME's near-instant
+drive cuts "Fight On" instead (#11, #10). Check both when changing them. The setting is `hw.instant_disk`, kept like the DIP
 switches: in states, and the host's value applies in netplay. Instant
 emulates exactly as before drive timing existed.
+
+## CPU timing
+
+The R4600 runs one instruction per cycle at 100 MHz; Count ticks at half
+that. Reads from the boot EPROM cost 128 extra cycles, as in MAME: without
+them the boot is over before the sound board is ready and the attract mode
+plays silently. `run_frame` gives the CPU 256-cycle slices, and whatever it
+runs past a slice (translated code stops only at the end of a block or loop)
+is taken off the next one (`m.cpu_over`, in the state). Without that,
+translated code got ~5% more cycles per frame than the interpreter, and the
+games' Count-timed waits ran fast: KI1's attract coin played at nearly twice
+its speed (issue #11). Translated and interpreted runs should show the same
+timing on screen; compare them when changing anything here.
+
+The picture is taken at the start of vblank (`video_vblank()`, line 240), as
+MAME draws it, not at the end of the frame: the games flip buffers early in
+vblank and may still be drawing into the new one, which made fighters
+vanish on single frames as they walked in (issue #5).
 
 ## Determinism (netplay, rewind and run-ahead depend on it)
 

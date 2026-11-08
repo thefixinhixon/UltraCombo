@@ -53,6 +53,10 @@ typedef struct {
     uint32_t health_step;       // ...this far apart
     int health_max;
     uint32_t bars_p1;           // bars a fighter has lost (0, or 1 on the last), same step as health
+    uint32_t fighter_p1;        // a fighter's block, same step as health: +0x01 bit 7 is set
+                                // while the fighter is in a fight (the game clears the block
+                                // after it), +0x03 is nonzero while the computer controls it
+                                // (a 1-player fight's opponent, attract mode demos)
     uint32_t timer_tick, timer_ones, timer_tens;   // round clock
     // What a combo breaker earns (KI1: the spark on the life bar, KI2: the
     // super meter), same step as health: training mode keeps it at least at

@@ -31,6 +31,7 @@ const game_t game_ki2 = {
 
     .credits = 0x7ff124, .credits_needed = 2,
     .health_p1 = 0x7fc105, .health_step = 0x100, .health_max = 120,
+    .fighter_p1 = 0x7fc0b0,
     .bars_p1 = 0x7fc13f,        // found with KI2_POKE: preset to 1, emptying the bar ends the match
     .power_p1 = 0x7fbeb5, .power_full = 192, .power_name = "Super meter full",   // the game caps it at 192; 0x7fbeb4 is the bar shown, catching up
     .timer_tick = 0x7f7a10, .timer_ones = 0x7f7a11, .timer_tens = 0x7f7a12,

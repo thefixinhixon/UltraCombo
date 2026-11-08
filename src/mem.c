@@ -6,15 +6,32 @@
 #include "ide.h"
 #include "sound.h"
 #include <stdio.h>
+#include <string.h>
 
 uint8_t ram[RAM_SIZE];
 uint8_t ram_dirty[RAM_PAGES];
 uint8_t rom[ROM_SIZE];
 hw_t hw = { .p1 = 0xffffffffu, .p2 = 0xffffffffu, .volume = 0xffffffffu, .dsw = 0xffffffffu };
 
-const uint16_t *video_base(void)
+static const uint16_t *selected_buffer(void)
 {
     return (const uint16_t *)&ram0[(hw.vram_control & 4) ? 0x58000 : 0x30000];
+}
+
+// The picture is taken when the display reaches the start of vblank, as MAME
+// draws it. The games flip buffers early in vblank and may still be drawing
+// into the new one, so taking it at the end of the frame showed fighters
+// missing on some frames (issue #5). Not in the state: after a load the
+// selected buffer stands in until the next frame is run.
+static uint16_t shown[320 * 240];
+static bool shown_valid;
+
+void video_vblank(void) { memcpy(shown, selected_buffer(), sizeof shown); shown_valid = true; }
+void video_invalidate(void) { shown_valid = false; }
+
+const uint16_t *video_base(void)
+{
+    return shown_valid ? shown : selected_buffer();
 }
 
 static uint32_t volume_r(void)
