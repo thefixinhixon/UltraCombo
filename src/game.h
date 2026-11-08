@@ -48,7 +48,8 @@ typedef struct {
     // and the features using them are off.
     uint32_t credits;           // credit count (32-bit)
     int credits_needed;         // credits to start with the default coinage
-    uint32_t health_p1;         // current health bar, one byte per player...
+    uint32_t health_p1;         // current health bar, one byte per player: the whole part of
+                                // an 8.8 value, its fraction in the byte before...
     uint32_t health_step;       // ...this far apart
     int health_max;
     uint32_t bars_p1;           // bars a fighter has lost (0, or 1 on the last), same step as health

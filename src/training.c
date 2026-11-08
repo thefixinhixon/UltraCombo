@@ -25,6 +25,15 @@ static void poke8(uint32_t off, uint8_t v)
     ram_touch(&ram2[off]);      // keep save states and rollback exact
 }
 
+// Health is the whole part of an 8.8 value: clear the fraction too, or a
+// refill to the maximum leaves it above (120.75), and KI1's life bar
+// drawing then runs past the screen and wipes memory (issue #12).
+static void set_health(uint32_t off, uint8_t v)
+{
+    poke8(off - 1, 0);
+    poke8(off, v);
+}
+
 static struct { uint8_t last; int still; } hp[2];
 
 void training_apply(bool real)
@@ -54,14 +63,14 @@ void training_apply(bool real)
             int want = cfg.training_refill || h > target ? target : h;
             if (ram2[boff] <= 1 && h && hp[p].still >= REFILL_DELAY && (ram2[boff] != 1 || h != want)) {
                 poke8(boff, 1);
-                poke8(off, (uint8_t)want);
+                set_health(off, (uint8_t)want);
                 if (real) hp[p].last = (uint8_t)want;
             }
             continue;
         }
         // refill once a combo is over; a KO (0) is left to the game
         if (cfg.training_refill && h && h < HEALTH_MAX && hp[p].still >= REFILL_DELAY) {
-            poke8(off, HEALTH_MAX);
+            set_health(off, HEALTH_MAX);
             if (real) hp[p].last = HEALTH_MAX;
         }
     }
