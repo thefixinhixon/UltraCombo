@@ -285,8 +285,21 @@ static void gen_function(sb_t *out, uint32_t lo, uint32_t hi, label_t **labels, 
     for (int i = 0; i < n; i++)
         if (fl[i].kind == K_JR && ((word(lo + 4u * (uint32_t)i) >> 21) & 31) != 31) computed = true;
     for (int i = 0; i < n; i++) lset[i] = computed || i == 0 || has(leader, lo + 4u * (uint32_t)i);
-    // A branch whose delay slot is another branch is left to the interpreter.
-    for (int i = 0; i < n; i++) bad[i] = fl[i].kind && fl[i + 1].kind;
+    // A branch whose delay slot is another branch is left to the interpreter,
+    // except one pattern both games' movie decoders run in their inner loop:
+    // beq/bne, then the opposite test on the same registers to the same
+    // target, then an ordinary instruction. It always goes to the target, and
+    // when the first branch isn't taken the second one is, so the third
+    // instruction runs first, as its delay slot: one cycle more.
+    uint8_t *pair = calloc((size_t)n + 1, 1);
+    for (int i = 0; i < n; i++) {
+        bad[i] = fl[i].kind && fl[i + 1].kind;
+        if (!bad[i] || i + 2 >= n || lset[i + 1]) continue;
+        uint32_t a = word(lo + 4u * (uint32_t)i), b = word(lo + 4u * (uint32_t)i + 4);
+        unsigned oa = a >> 26, ob = b >> 26;
+        if ((oa == 4 || oa == 5) && oa + ob == 9 && (a & 0x03ff0000u) == (b & 0x03ff0000u) &&
+            fl[i].tgt == fl[i + 1].tgt && fl[i + 2].kind == K_NONE) { pair[i] = 1; bad[i] = 0; }
+    }
     for (int i = 0; i < n; i++)
         if (lset[i] && !bad[i]) {
             if (*nlabels == *labcap) { *labcap = *labcap ? *labcap * 2 : 4096; *labels = realloc(*labels, sizeof **labels * (size_t)*labcap); }
@@ -332,6 +345,19 @@ static void gen_function(sb_t *out, uint32_t lo, uint32_t hi, label_t **labels, 
         if (f.kind == K_NONE) { gen_op(op1, sizeof op1, pc, op, false); sbf(out, "    %s\n", op1); pc += 4; continue; }
 
         uint32_t slot_pc = pc + 4;
+        if (pair[i]) {
+            uint32_t t = f.tgt;
+            if (IN(t) && !(t & 3) && lab[IDX(t)] && !bad[IDX(t)]) {
+                if (t <= pc) snprintf(jmp, sizeof jmp, "if (STOP()) EXIT(0x%08xu); goto L_%08x;", t, t);
+                else snprintf(jmp, sizeof jmp, "goto L_%08x;", t);
+            } else snprintf(jmp, sizeof jmp, "EXIT(0x%08xu);", t);
+            gen_cond(cond, sizeof cond, op);
+            gen_op(slot, sizeof slot, pc + 8, word(pc + 8), true);   // the second branch's delay slot
+            sbf(out, "    if (!(%s)) { cpu.cycles++; %s } %s\n", cond, slot, jmp);
+            pc = (pc + 8 < hi && lab[IDX(pc + 8)]) ? pc + 8 : pc + 12;
+            seg_start = true;
+            continue;
+        }
         gen_op(slot, sizeof slot, slot_pc, word(slot_pc), true);
         unsigned rs = (op >> 21) & 31, rd = (op >> 11) & 31;
         if (f.kind == K_ERET) {
@@ -376,7 +402,7 @@ static void gen_function(sb_t *out, uint32_t lo, uint32_t hi, label_t **labels, 
     sbf(out, "    EXIT(0x%08xu);\n}\n\n", hi);
 #undef IDX
 #undef IN
-    free(fl); free(lset); free(bad); free(lab);
+    free(fl); free(lset); free(bad); free(lab); free(pair);
 }
 
 static int cmp_label(const void *a, const void *b)

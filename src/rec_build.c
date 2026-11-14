@@ -31,7 +31,7 @@
 extern char **environ;
 #endif
 
-#define RECOMP_VERSION 3           // bump when recomp.c's or adsprec.c's output changes
+#define RECOMP_VERSION 4           // bump when recomp.c's or adsprec.c's output changes
 #define SNAPSHOT_FRAMES game.snapshot_frames   // the game has loaded all of its code by then
 
 // rec_abi.h, rec_gen.h and adsp_core.h, embedded at build time (build/rec_headers.c)
