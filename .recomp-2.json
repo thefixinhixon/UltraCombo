@@ -32,5 +32,5 @@
     "Testing the first-launch build on Windows 7 and 8",
     "Load-time measurements from a real cabinet's hard drive"
   ],
-  "notes": "v1.2.5 (pre-release): Windows zip, Linux tarball and AppImage. Second game in the UltraCombo program (see .recomp.json for Killer Instinct). Plays the whole game, authentic by default, with optional training mode, rollback netplay, save states, rewind, run-ahead and libretro shaders. The SHA-1 is of MAME's kinst2.chd; no game files are included, players supply their own."
+  "notes": "v1.2.6 (pre-release): Windows zip, Linux tarball and AppImage. Second game in the UltraCombo program (see .recomp.json for Killer Instinct). Plays the whole game, authentic by default, with optional training mode, rollback netplay, save states, rewind, run-ahead and libretro shaders. The SHA-1 is of MAME's kinst2.chd; no game files are included, players supply their own."
 }

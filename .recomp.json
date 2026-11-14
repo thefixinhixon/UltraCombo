@@ -38,5 +38,5 @@
     "Testing the first-launch build on Windows 7 and 8",
     "Load-time measurements from a real cabinet's hard drive"
   ],
-  "notes": "v1.2.5 (pre-release): Windows zip, Linux tarball and AppImage. One program with a game picker for Killer Instinct (version 1.5d, 1.4 as an option) and Killer Instinct 2 (see .recomp-2.json). Plays the whole game, authentic by default, with optional training mode, rollback netplay, save states, rewind, run-ahead and libretro shaders. The SHA-1 is of MAME's kinst.chd; no game files are included, players supply their own."
+  "notes": "v1.2.6 (pre-release): Windows zip, Linux tarball and AppImage. One program with a game picker for Killer Instinct (version 1.5d, 1.4 as an option) and Killer Instinct 2 (see .recomp-2.json). Plays the whole game, authentic by default, with optional training mode, rollback netplay, save states, rewind, run-ahead and libretro shaders. The SHA-1 is of MAME's kinst.chd; no game files are included, players supply their own."
 }
