@@ -172,8 +172,11 @@ static void build_table(void)
         snprintf(pad_keys[b], 24, "%s", pad_defaults[b]);
         add("gamepad", button_names[b], T_PAD, &cfg.pad[b], pad_keys[b],
             b == 0 ? "a b x y back start leftshoulder rightshoulder lefttrigger righttrigger dpup dpdown"
-                     " dpleft dpright leftstick rightstick; first pad = player 1, second = player 2" : 0, 0);
+                     " dpleft dpright leftstick rightstick; both players' pads use these" : 0, 0);
     }
+    add_str("gamepad", "p1_pad", cfg.pad_choice[0], "",
+            "player 1's controller, by name as the log shows it (Menu > Controls sets it); empty = the first connected");
+    add_str("gamepad", "p2_pad", cfg.pad_choice[1], "", "player 2's controller; empty = the next one connected");
     add("gamepad", "p1_labels", T_ENUM, &cfg.pad_family[0], "auto",
         "button labels: auto, xbox, playstation, switch, positions; bindings stay unchanged", family_names);
     add("gamepad", "p2_labels", T_ENUM, &cfg.pad_family[1], "auto", "player 2 button labels", family_names);

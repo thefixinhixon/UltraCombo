@@ -68,6 +68,7 @@ typedef struct {
     SDL_Scancode hotkeys[NHOTKEYS];
     int  pad[NBUTTONS];        // same layout for both pads; PAD_* or SDL button
     int  pad_family[2];        // label overrides only, PAD_FAMILY_*
+    char pad_choice[2][128];   // each player's controller, by name; empty = connection order
     int  pad_deadzone;         // 0-32767
     bool socd;                 // left+right = neutral, up+down = up (keyboards, hitboxes)
     bool rumble;

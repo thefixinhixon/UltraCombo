@@ -175,7 +175,8 @@ The games run in **free play** by default (the board's coinage DIP
 switch): from the attract demo, the first Start goes to the title screen
 and the second starts the game, as on a free-play cabinet. In UltraCombo 2,
 with free play off, `auto_coin` makes Start insert the coins it needs. The
-first pad connected is player 1, the second player 2.
+first pad connected is player 1, the second player 2, unless you choose
+otherwise in Menu → Controls (see below).
 
 | Hotkey | |
 |---|---|
@@ -212,6 +213,20 @@ parameters, frame pacing and the performance overlay.
 **left+right = neutral** (SOCD cleaning, on by default: left and right
 together count as neither, up and down together as up, like fight sticks),
 **rumble** when your character is hit, and the stick deadzone.
+
+**P1 controller / P2 controller** (top of Controls) say which pad each
+player has. Select one and press any button on the pad you want, or use
+left/right to step through the connected pads; if the other player had that
+pad, the two swap. The choice is remembered by the pad's name (`p1_pad`,
+`p2_pad` in the .ini), so it holds the next time even if the pads connect
+in another order. This is the fix when a different pad than the one you hold
+is player 1: a wireless receiver still plugged in, with its pad switched off,
+counts as a connected controller. Every pad can drive the menu, player or
+not. The log lists every joystick found, and says when one has no gamepad
+layout known to SDL (some pads in DirectInput or Switch mode): such a pad is
+not used until its line from
+[SDL_GameControllerDB](https://github.com/mdqinc/SDL_GameControllerDB) is put
+in `gamecontrollerdb.txt` beside the program.
 
 **Game & system:**
 

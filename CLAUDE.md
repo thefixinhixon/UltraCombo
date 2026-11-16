@@ -227,6 +227,8 @@ game-derived), `KI2_CONSOLE` (Windows: log to the console instead of
 `KI2_TRAINING=N` applies training mode headless from frame N,
 `KI2_POKE=F:OFFSET:VALUE,...` writes a byte of ram2 (hex) before frame F, `KI2_SWITCH_TEST=N:V`
 switches to game version V after N frames (must equal a fresh start).
+`KI2_VIRTUAL_PADS="Name,Name,?Name"` attaches SDL virtual gamepads at startup, in that order
+(`?`: a plain joystick with no gamepad layout), to test controller assignment without devices.
 
 Finding a game's RAM locations: run two deterministic headless scripts
 that differ in one thing (hits or no hits), dump RAM at several frames,

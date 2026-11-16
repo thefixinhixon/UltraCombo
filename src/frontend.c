@@ -261,8 +261,11 @@ static void screenshot(void)
 /* Input                                                            */
 /* ---------------------------------------------------------------- */
 
-#define MAX_PADS 2
-static SDL_GameController *pads[MAX_PADS];
+#define MAX_PADS 2      // players
+#define MAX_OPEN 8      // controllers kept open: any of them drives the menu or can be picked for a player
+static SDL_GameController *open_pads[MAX_OPEN];   // in the order they connected
+static SDL_GameController *pads[MAX_PADS];        // each player's, one of open_pads
+static SDL_JoystickID pinned[MAX_PADS] = { -1, -1 };  // picked in the menu this session: tells identical pads apart
 static pad_prompt_t pad_prompt;
 
 static int prompt_override(void)
@@ -278,30 +281,140 @@ static const char *pad_label(int button)
     return pad_button_name(SDL_GameControllerFromInstanceID(pad_prompt.last_pad), prompt_override(), button);
 }
 
+static SDL_JoystickID pad_id(SDL_GameController *c) { return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)); }
+
+static const char *pad_title(SDL_GameController *c)
+{
+    const char *n = c ? SDL_GameControllerName(c) : NULL;
+    return n && *n ? n : "Unknown controller";
+}
+
+// Who plays with which pad: the pad picked in the menu this session, else the
+// one named in the settings, else the one they had, else the next free one in
+// connection order. A wireless receiver whose pad is off still counts as a
+// connected controller, so without a choice it could hold player 1 (issue #15).
+static void assign_pads(void)
+{
+    SDL_GameController *was[MAX_PADS] = { pads[0], pads[1] };
+    bool taken[MAX_OPEN] = { 0 };
+    for (int p = 0; p < MAX_PADS; p++) pads[p] = NULL;
+    for (int pass = 0; pass < 4; pass++)
+        for (int p = 0; p < MAX_PADS; p++) {
+            if (pads[p]) continue;
+            for (int i = 0; i < MAX_OPEN; i++) {
+                SDL_GameController *c = open_pads[i];
+                if (!c || taken[i]) continue;
+                bool ok = pass == 0 ? pad_id(c) == pinned[p]
+                        : pass == 1 ? cfg.pad_choice[p][0] && !strcmp(pad_title(c), cfg.pad_choice[p])
+                        : pass == 2 ? c == was[p] : true;
+                if (ok) { pads[p] = c; taken[i] = true; break; }
+            }
+        }
+    char msg[160] = "";
+    for (int p = 0; p < MAX_PADS; p++) {
+        if (pads[p] == was[p] || !pads[p]) continue;
+        fprintf(stderr, "pad: player %d = %s\n", p + 1, pad_title(pads[p]));
+        size_t n = strlen(msg);
+        snprintf(msg + n, sizeof msg - n, "%sPlayer %d: %.40s", n ? ", " : "", p + 1, pad_title(pads[p]));
+    }
+    if (*msg) osd_message("%s", msg);
+}
+
+// Every joystick SDL finds goes into the log, so a pad that does nothing can
+// be told apart: not a known gamepad, or a known one that isn't a player's.
+static void log_joystick(int index)
+{
+    static SDL_JoystickID seen[32];
+    static int nseen;
+    SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(index);
+    for (int i = 0; i < nseen; i++) if (seen[i] == id) return;     // startup scan + its event
+    if (nseen < 32) seen[nseen++] = id;
+    char guid[40];
+    SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(index), guid, sizeof guid);
+    const char *name = SDL_JoystickNameForIndex(index);
+    bool known = SDL_IsGameController(index);
+    fprintf(stderr, "joystick: %s (guid %s)%s\n", name ? name : "?", guid,
+            known ? "" : ": no gamepad layout known for it, so it is not used. A line for it in "
+                         "gamecontrollerdb.txt beside the program adds one");
+    if (!known) osd_message("Controller not recognised: %.40s", name ? name : "?");
+}
+
 static void pad_added(int index)
 {
+    log_joystick(index);
     SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(index);
-    for (int i = 0; i < MAX_PADS; i++)                      // already a player (startup scan + its event)
-        if (pads[i] && SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pads[i])) == id) return;
-    for (int i = 0; i < MAX_PADS; i++) {
-        if (pads[i]) continue;
-        pads[i] = SDL_GameControllerOpen(index);
-        if (pads[i]) {
-            fprintf(stderr, "pad: player %d = %s\n", i + 1, SDL_GameControllerName(pads[i]));
-            osd_message("Player %d: %s", i + 1, SDL_GameControllerName(pads[i]));
-        }
-        return;
+    for (int i = 0; i < MAX_OPEN; i++)                      // already open (startup scan + its event)
+        if (open_pads[i] && pad_id(open_pads[i]) == id) return;
+    for (int i = 0; i < MAX_OPEN; i++) {
+        if (open_pads[i]) continue;
+        if (!(open_pads[i] = SDL_GameControllerOpen(index)))
+            fprintf(stderr, "pad: can't open %s: %s\n", SDL_JoystickNameForIndex(index), SDL_GetError());
+        else fprintf(stderr, "pad: connected %s\n", pad_title(open_pads[i]));
+        break;
     }
+    assign_pads();
 }
 
 static void pad_removed(SDL_JoystickID id)
 {
-    for (int i = 0; i < MAX_PADS; i++)
-        if (pads[i] && SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pads[i])) == id) {
-            osd_message("Player %d controller disconnected", i + 1);
-            SDL_GameControllerClose(pads[i]);
-            pads[i] = NULL;
-        }
+    for (int i = 0; i < MAX_OPEN; i++) {
+        if (!open_pads[i] || pad_id(open_pads[i]) != id) continue;
+        for (int p = 0; p < MAX_PADS; p++)
+            if (pads[p] == open_pads[i]) { osd_message("Player %d controller disconnected", p + 1); pads[p] = NULL; }
+        fprintf(stderr, "pad: disconnected %s\n", pad_title(open_pads[i]));
+        SDL_GameControllerClose(open_pads[i]);
+        open_pads[i] = NULL;
+    }
+    assign_pads();      // a spare pad may take the free place
+}
+
+// Testing without devices: KI2_VIRTUAL_PADS="Name,Name,?Name" attaches SDL
+// virtual gamepads, in that order ('?': a plain joystick with no gamepad layout).
+static void attach_test_pads(void)
+{
+    static char buf[512];
+    const char *e = getenv("KI2_VIRTUAL_PADS");
+    if (!e) return;
+    snprintf(buf, sizeof buf, "%s", e);
+    for (char *tok = strtok(buf, ","); tok; tok = strtok(NULL, ",")) {
+        bool pad = *tok != '?';
+        SDL_VirtualJoystickDesc d;
+        SDL_zero(d);
+        d.version = SDL_VIRTUAL_JOYSTICK_DESC_VERSION;
+        d.type = pad ? SDL_JOYSTICK_TYPE_GAMECONTROLLER : SDL_JOYSTICK_TYPE_UNKNOWN;
+        d.naxes = pad ? SDL_CONTROLLER_AXIS_MAX : 2;
+        d.nbuttons = pad ? SDL_CONTROLLER_BUTTON_MAX : 4;
+        d.name = pad ? tok : tok + 1;
+        if (SDL_JoystickAttachVirtualEx(&d) < 0) fprintf(stderr, "virtual pad: %s\n", SDL_GetError());
+    }
+}
+
+// Give player p the pad c, as chosen in the menu, and remember it by name.
+// If the other player had it, they take this player's old pad.
+static void choose_pad(int p, SDL_GameController *c)
+{
+    if (!c) return;
+    int o = !p;
+    if (pads[o] == c) {
+        pinned[o] = pads[p] ? pad_id(pads[p]) : -1;
+        snprintf(cfg.pad_choice[o], sizeof cfg.pad_choice[o], "%s", pads[p] ? pad_title(pads[p]) : "");
+    }
+    pinned[p] = pad_id(c);
+    snprintf(cfg.pad_choice[p], sizeof cfg.pad_choice[p], "%s", pad_title(c));
+    assign_pads();
+}
+
+// The next connected pad after player p's, for left/right in the menu.
+static SDL_GameController *next_pad(int p, int dir)
+{
+    int cur = -1;
+    for (int i = 0; i < MAX_OPEN; i++) if (open_pads[i] && open_pads[i] == pads[p]) cur = i;
+    for (int k = 1; k <= MAX_OPEN; k++) {
+        int start = cur >= 0 ? cur : dir > 0 ? -1 : MAX_OPEN;
+        int i = ((start + dir * k) % MAX_OPEN + MAX_OPEN) % MAX_OPEN;
+        if (open_pads[i]) return open_pads[i];
+    }
+    return NULL;
 }
 
 static bool pad_pressed(SDL_GameController *c, int b)
@@ -477,8 +590,8 @@ static bool key_held(int hk)
 
 static bool pad_held(int b)
 {
-    for (int i = 0; i < MAX_PADS; i++)
-        if (pads[i] && pad_pressed(pads[i], b)) return true;
+    for (int i = 0; i < MAX_OPEN; i++)
+        if (open_pads[i] && pad_pressed(open_pads[i], b)) return true;
     return false;
 }
 
@@ -570,7 +683,7 @@ enum { M_RESUME, M_SAVE, M_LOAD, M_SLOT, M_GRAPHICS, M_CONTROLS, M_GAME, M_PRACT
 // Graphics
 enum { G_FULLSCREEN, G_MODE, G_WINDOW, G_SCALE, G_SHADER, G_PARAMS, G_PACING, G_PERF, G_BACK, G_COUNT };
 // Controls
-enum { C_P1, C_P2, C_PAD, C_HOTKEYS, C_PADHOT, C_SOCD, C_RUMBLE, C_DEADZONE, C_P1LABELS, C_P2LABELS, C_BACK, C_COUNT };
+enum { C_P1PAD, C_P2PAD, C_P1, C_P2, C_PAD, C_HOTKEYS, C_PADHOT, C_SOCD, C_RUMBLE, C_DEADZONE, C_P1LABELS, C_P2LABELS, C_BACK, C_COUNT };
 // Game & system
 enum { S_VOLUME, S_MUTE_BG, S_PAUSE_BG, S_VERSION, S_DIFFICULTY, S_FREEPLAY, S_BLOOD, S_BLOODCOL, S_FINISH, S_DEMO, S_DISK, S_AUTOCOIN, S_RUNAHEAD, S_REWIND, S_BACK, S_COUNT };
 // Practice
@@ -753,6 +866,9 @@ static void draw_menu(uint32_t *out)
         break;
     case PG_CONTROLS:
         title = "CONTROLS";
+        for (int p = 0; p < 2; p++)
+            snprintf(b[p ? C_P2PAD : C_P1PAD], 72, "P%d controller\t%.26s", p + 1,
+                     capturing == (p ? C_P2PAD : C_P1PAD) ? "press a button on it" : pads[p] ? pad_title(pads[p]) : "None");
         snprintf(b[C_P1], 72, "Player 1 keys...");
         snprintf(b[C_P2], 72, "Player 2 keys...");
         snprintf(b[C_PAD], 72, "Gamepad buttons...");
@@ -766,6 +882,7 @@ static void draw_menu(uint32_t *out)
                      pad_family_name(cfg.pad_family[p]), cfg.pad_family[p] == PAD_FAMILY_AUTO ? ": " : "",
                      cfg.pad_family[p] == PAD_FAMILY_AUTO ? pad_family_name(pad_label_family(pads[p], PAD_FAMILY_AUTO)) : "");
         snprintf(b[C_BACK], 72, "Back");
+        if (capturing >= 0) foot = "ESC CANCELS";
         break;
     case PG_BIND: {
         static const char *const titles[] = { "PLAYER 1 KEYS", "PLAYER 2 KEYS", "GAMEPAD BUTTONS", "HOTKEYS", "GAMEPAD HOTKEYS" };
@@ -1006,6 +1123,12 @@ static void menu_change(int dir)
         case C_P1: case C_P2: case C_PAD: case C_HOTKEYS: case C_PADHOT:
             if (!dir) { bind_set = menu_sel - C_P1; go(PG_BIND, 0); }
             return;
+        case C_P1PAD: case C_P2PAD: {
+            int p = menu_sel == C_P2PAD;
+            if (dir) choose_pad(p, next_pad(p, dir));
+            else { capturing = menu_sel; return; }
+            break;
+        }
         case C_SOCD: cfg.socd = !cfg.socd; break;
         case C_RUMBLE: cfg.rumble = !cfg.rumble; break;
         case C_DEADZONE: {
@@ -1175,10 +1298,19 @@ static void edit_key(SDL_Scancode sc, const char *text)
     } else if (sc == SDL_SCANCODE_ESCAPE) { editing = -1; SDL_StopTextInput(); }
 }
 
-// A key or pad button for the binding being captured. key = 0: pad input.
-static void capture(SDL_Scancode key, int pad_button, bool clear)
+// A key or pad button for the binding being captured. key = 0: pad input,
+// from the pad `from`.
+static void capture(SDL_Scancode key, int pad_button, bool clear, SDL_JoystickID from)
 {
     int row = capturing;
+    if (menu_page == PG_CONTROLS) {         // picking a player's controller: a press on it
+        if (key == SDL_SCANCODE_ESCAPE) capturing = -1;
+        if (key || clear) return;
+        capturing = -1;
+        choose_pad(row == C_P2PAD, SDL_GameControllerFromInstanceID(from));
+        menu_changed = true;
+        return;
+    }
     bool pad_set = bind_set == 2 || bind_set == 4;
     if (!clear && (pad_set ? pad_button == PAD_NONE : !key)) return;    // wrong kind of input: keep waiting
     capturing = -1;
@@ -1223,6 +1355,7 @@ static bool handle_events(void)
         case SDL_QUIT: return false;
         case SDL_CONTROLLERDEVICEADDED: pad_added(ev.cdevice.which); break;
         case SDL_CONTROLLERDEVICEREMOVED: pad_removed(ev.cdevice.which); break;
+        case SDL_JOYDEVICEADDED: log_joystick(ev.jdevice.which); break;
         case SDL_WINDOWEVENT:
             if (ev.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED || ev.window.event == SDL_WINDOWEVENT_MOVED) choose_pacing();
             if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST) { focused = false; if (cfg.mute_unfocused || cfg.pause_unfocused) stop_audio(); }
@@ -1230,8 +1363,8 @@ static bool handle_events(void)
             break;
         case SDL_CONTROLLERAXISMOTION:
             if (menu_open && capturing >= 0 && ev.caxis.value > 20000) {
-                if (ev.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) capture(0, PAD_LT, false);
-                if (ev.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) capture(0, PAD_RT, false);
+                if (ev.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) capture(0, PAD_LT, false, ev.caxis.which);
+                if (ev.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) capture(0, PAD_RT, false, ev.caxis.which);
             } else if (ev.caxis.value > 20000 &&
                        ((ev.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT && cfg.pad_quit == PAD_LT) ||
                         (ev.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT && cfg.pad_quit == PAD_RT)))
@@ -1239,7 +1372,7 @@ static bool handle_events(void)
             break;
         case SDL_CONTROLLERBUTTONDOWN: {
             int b = ev.cbutton.button;
-            if (menu_open && capturing >= 0) { capture(0, b, false); break; }
+            if (menu_open && capturing >= 0) { capture(0, b, false, ev.cbutton.which); break; }
             SDL_GameController *c = SDL_GameControllerFromInstanceID(ev.cbutton.which);
             bool combo = c && ((b == SDL_CONTROLLER_BUTTON_START && SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_BACK)) ||
                                (b == SDL_CONTROLLER_BUTTON_BACK && SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_START)));
@@ -1262,8 +1395,8 @@ static bool handle_events(void)
             if (menu_open && capturing >= 0) {
                 if (ev.key.repeat) break;
                 if (sc == SDL_SCANCODE_ESCAPE) capturing = -1;
-                else if (sc == SDL_SCANCODE_BACKSPACE) capture(0, PAD_NONE, true);
-                else capture(sc, PAD_NONE, false);
+                else if (sc == SDL_SCANCODE_BACKSPACE) capture(0, PAD_NONE, true, -1);
+                else capture(sc, PAD_NONE, false, -1);
                 break;
             }
             bool alt_enter = sc == SDL_SCANCODE_RETURN && (ev.key.keysym.mod & KMOD_ALT);
@@ -1471,10 +1604,13 @@ int frontend_main(void)
         FILE *f = fopen(db, "rb");
         if (f) { fclose(f); SDL_GameControllerAddMappingsFromFile(db); }
     }
+    attach_test_pads();
     // Pads already connected. Their connect events may be gone: the game picker
     // runs first in the same process and takes them.
-    for (int i = 0; i < SDL_NumJoysticks(); i++)
+    for (int i = 0; i < SDL_NumJoysticks(); i++) {
         if (SDL_IsGameController(i)) pad_added(i);
+        else log_joystick(i);
+    }
     int scale = cfg.window_scale > 0 ? cfg.window_scale : 3;
     win = video_open(game.product, 320 * scale, 240 * scale);
     if (!win) { fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 1; }
