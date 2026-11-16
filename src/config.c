@@ -186,6 +186,7 @@ static void build_table(void)
     add("gamepad", "rewind", T_PAD, &cfg.pad_rewind, "", "hold to rewind, e.g. leftshoulder", 0);
     add("gamepad", "fast_forward", T_PAD, &cfg.pad_fast, "", "hold to fast-forward, e.g. lefttrigger", 0);
     add("gamepad", "quit", T_PAD, &cfg.pad_quit, "", "quit at once (holding Back+Start for 2 seconds also quits)", 0);
+    add("gamepad", "screenshot", T_PAD, &cfg.pad_screenshot, "", "save a screenshot, e.g. leftstick", 0);
 }
 
 static int parse_pad(const char *v)

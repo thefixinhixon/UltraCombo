@@ -73,7 +73,7 @@ typedef struct {
     bool socd;                 // left+right = neutral, up+down = up (keyboards, hitboxes)
     bool rumble;
     bool pause_unfocused, mute_unfocused;
-    int  pad_menu, pad_rewind, pad_fast, pad_quit;   // gamepad hotkeys (PAD_NONE = unbound)
+    int  pad_menu, pad_rewind, pad_fast, pad_quit, pad_screenshot;   // gamepad hotkeys (PAD_NONE = unbound)
 } config_t;
 
 extern config_t cfg;

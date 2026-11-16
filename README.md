@@ -189,7 +189,7 @@ otherwise in Menu → Controls (see below).
 | P | Pause |
 | . | Frame advance (pauses first) |
 | F11 or Alt+Enter | Fullscreen |
-| F12 | Screenshot to `screenshots/` |
+| F12 | Screenshot to `screenshots/` (PNG, the game's 320×240 picture; a pad button can be set in Controls → Gamepad hotkeys) |
 | F3 | Input display |
 | F4 | Training mode |
 | F8 / F9 | Record / play the training dummy |
@@ -201,6 +201,11 @@ otherwise in Menu → Controls (see below).
 
 Each game keeps its own settings; changes made in the menu are saved to its
 `.ini` file when the menu closes.
+
+The program's version is in the menu's title, at the bottom of the game
+picker, in the first line of the log, in `UltraCombo.exe`'s properties on
+Windows, and printed by `ultracombo --version`. Please give it when you report
+a problem.
 
 ## The menu
 
@@ -435,6 +440,10 @@ the same inputs).
 
 These hold the program, Zig and TinyCC, SDL2 (Linux: in `lib/`), shaders and
 licences: no game files and no game code.
+
+The program's version comes from the tag: the one being built on GitHub
+Actions, else `git describe` (e.g. `1.2.6-3-gabc1234-dirty` between
+releases), else `dev`; `make UC_VERSION=...` sets it by hand.
 
 Pushing a version tag (`git tag v1.2.0 && git push origin v1.2.0`) builds
 all of them on GitHub Actions (`.github/workflows/release.yml`) and attaches

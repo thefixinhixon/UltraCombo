@@ -23,6 +23,7 @@
 #include "game.h"
 #include "video.h"
 #include "shaders.h"
+#include "version.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <string.h>
@@ -711,8 +712,13 @@ static const char *const hotkey_labels[NHOTKEYS] = {
     "Service credit", "Cabinet volume up", "Cabinet volume down", "Input display", "Training mode",
     "Record dummy", "Play dummy", "Performance overlay", "Quit",
 };
-static const char *const pad_hotkey_labels[4] = { "Menu", "Rewind (hold)", "Fast-forward (hold)", "Quit" };
-static int *pad_hotkey(int i) { return i == 0 ? &cfg.pad_menu : i == 1 ? &cfg.pad_rewind : i == 2 ? &cfg.pad_fast : &cfg.pad_quit; }
+#define NPADHOT 5
+static const char *const pad_hotkey_labels[NPADHOT] = { "Menu", "Rewind (hold)", "Fast-forward (hold)", "Quit", "Screenshot" };
+static int *pad_hotkey(int i)
+{
+    int *const p[NPADHOT] = { &cfg.pad_menu, &cfg.pad_rewind, &cfg.pad_fast, &cfg.pad_quit, &cfg.pad_screenshot };
+    return p[i];
+}
 
 /* --- shader list --- */
 
@@ -795,7 +801,7 @@ static int page_count(void)
     case PG_GRAPHICS: return G_COUNT;
     case PG_PARAMS: return shader_param_count() + 2;
     case PG_CONTROLS: return C_COUNT;
-    case PG_BIND: return (bind_set == 3 ? NHOTKEYS : bind_set == 4 ? 4 : NBUTTONS) + 1;
+    case PG_BIND: return (bind_set == 3 ? NHOTKEYS : bind_set == 4 ? NPADHOT : NBUTTONS) + 1;
     case PG_GAME: return S_COUNT;
     case PG_PRACTICE: return T_COUNT;
     case PG_NETPLAY: return N_COUNT;
@@ -817,7 +823,10 @@ static void draw_menu(uint32_t *out)
     char lbl[80];
 
     switch (menu_page) {
-    case PG_MAIN:
+    case PG_MAIN: {
+        static char main_title[64];
+        snprintf(main_title, sizeof main_title, "%s  v%s", game.product, uc_version);
+        title = main_title;
         snprintf(b[M_RESUME], 72, "Resume");
         snprintf(b[M_SAVE], 72, "Save state\tslot %d", slot());
         snprintf(b[M_LOAD], 72, "Load state\tslot %d", slot());
@@ -832,6 +841,7 @@ static void draw_menu(uint32_t *out)
         snprintf(b[M_QUIT], 72, "Quit");
         pad_prompt_footer(&pad_prompt, prompt_override(), "SELECT", "CLOSE", footer, sizeof footer);
         break;
+    }
     case PG_GRAPHICS: {
         static const char *const scale_names[] = { "Fit 4:3", "Integer", "Stretch" };
         static const char *const pacing_names[] = { "Auto", "Audio", "Vsync" };
@@ -1441,6 +1451,11 @@ static bool handle_events(void)
         }
     }
     check_quit_hold();
+    // the pad's screenshot button, polled so a trigger works too: one shot per press
+    static bool shot_held;
+    bool shot = !(menu_open && capturing >= 0) && pad_held(cfg.pad_screenshot);
+    if (shot && !shot_held) screenshot();
+    shot_held = shot;
     return !quit_requested;
 }
 

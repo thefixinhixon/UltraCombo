@@ -35,6 +35,7 @@
 #include "training.h"
 #include "launch.h"
 #include "picker.h"
+#include "version.h"
 
 #define CPU_HZ        100000000
 #define LINES         261
@@ -499,6 +500,7 @@ static void usage(void)
 {
     fprintf(stderr,
         "usage: ultracombo [options]\n"
+        "  --version       print the program's version and exit\n"
         "  --game ki1|ki2  Killer Instinct or Killer Instinct 2 (default: a picker\n"
         "                  when both are installed); the options below are for %s\n"
         "  --rom PATH      boot ROM (%s)\n"
@@ -658,6 +660,7 @@ int main(int argc, char **argv)
     main_argc = argc;
     main_argv = argv;
     game_select(&game_ki1);              // until one is chosen (the program's icon is UltraCombo's)
+    if (argc == 2 && !strcmp(argv[1], "--version")) { printf("%s %s\n", PRODUCT, uc_version); return 0; }
     // packaging helper: before anything writes a log or settings
     if (argc == 3 && !strcmp(argv[1], "--write-icon")) {
         size_t n = strlen(argv[2]);                     // .png: 256 pixels, else .ico
@@ -694,6 +697,7 @@ int main(int argc, char **argv)
         if (!getenv("KI2_CONSOLE")) { freopen(log, "w", stderr); setvbuf(stderr, NULL, _IONBF, 0); }
     }
 #endif
+    fprintf(stderr, "%s %s\n", PRODUCT, uc_version);
     static char ini[4096];
     snprintf(ini, sizeof ini, "%s%s.ini", data_dir(), game.id);
     config_load(ini);

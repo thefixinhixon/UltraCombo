@@ -6,7 +6,15 @@ LDLIBS  += $(shell pkg-config --libs sdl2) -lm -ldl
 SRC = src/main.c src/cpu.c src/disasm.c src/mem.c src/ide.c src/dcs.c src/adsp.c src/adsprec.c src/rec.c \
       src/frontend.c src/config.c src/osd.c src/png.c src/state.c src/video.c src/shaders.c src/icon.c src/adjust.c src/recomp.c src/rec_build.c src/training.c src/net.c src/netplay.c \
       src/game.c src/game_ki1.c src/game_ki2.c src/picker.c src/controller_labels.c src/launch.c
-OBJ = $(SRC:src/%.c=build/%.o) build/rec_headers.o build/libchdr.o
+OBJ = $(SRC:src/%.c=build/%.o) build/rec_headers.o build/libchdr.o build/version.o
+
+# The program's version: the tag being released on GitHub Actions, else
+# `git describe` (e.g. 1.2.6-3-gabc1234-dirty), else "dev". The file is only
+# rewritten when it changes, so it rebuilds what it must and nothing more.
+UC_VERSION ?= $(patsubst v%,%,$(or $(filter v%,$(GITHUB_REF_NAME)),$(shell git describe --tags --always --dirty 2>/dev/null),dev))
+UC_VER_NONE := 0,0,0,0
+# the same as numbers for the Windows version resource: 1.2.6-3-g... -> 1,2,6,0
+UC_VER_RC  := $(or $(shell echo '$(UC_VERSION)' | sed -n 's/^\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1,\2,\3,0/p'),$(UC_VER_NONE))
 
 # libchdr (MAME CHD reader) and the decompressors it bundles, as one unit
 CHDR = src/third_party/libchdr
@@ -34,6 +42,16 @@ ultracombo-dist: $(OBJ) build/rec_none.o
 
 build/%.o: src/%.c src/*.h | build
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+build/version.c: FORCE | build
+	@echo 'const char uc_version[] = "$(UC_VERSION)";' > $@.tmp
+	@cmp -s $@.tmp $@ && rm $@.tmp || mv $@.tmp $@
+
+build/version.o: build/version.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+FORCE:
+.PHONY: FORCE
 
 # the headers translated code needs, embedded so the program can build it at run time
 build/rec_headers.c: src/rec_abi.h src/rec_gen.h src/adsp_core.h tools/embed.py | build
@@ -83,7 +101,7 @@ WIN_CC   ?= x86_64-w64-mingw32-gcc
 WIN_SDL  ?= $(wildcard deps/sdl2-mingw/SDL2-*/x86_64-w64-mingw32)
 WIN_CFLAGS = -O2 -Wall -Wno-unused-parameter -I$(WIN_SDL)/include -I$(WIN_SDL)/include/SDL2 -Dmain=SDL_main
 WIN_LIBS   = -L$(WIN_SDL)/lib -lmingw32 -lSDL2main -lSDL2 -lws2_32 -mwindows -static-libgcc
-WIN_OBJ     = $(SRC:src/%.c=build-win/%.o) build-win/rec_headers.o build-win/rec_none.o build-win/libchdr.o
+WIN_OBJ     = $(SRC:src/%.c=build-win/%.o) build-win/rec_headers.o build-win/rec_none.o build-win/libchdr.o build-win/version.o
 
 windows: dist/windows/UltraCombo.exe
 
@@ -100,8 +118,8 @@ build-win/ki2.ico: $(ICON_TOOL)
 	@mkdir -p build-win
 	$(ICON_TOOL) --write-icon $@
 
-build-win/ki2-res.o: src/ki2.rc build-win/ki2.ico
-	x86_64-w64-mingw32-windres -I build-win -o $@ src/ki2.rc
+build-win/ki2-res.o: src/ki2.rc build-win/ki2.ico build/version.c
+	x86_64-w64-mingw32-windres -I build-win -DUC_VERSION_STR='\"$(UC_VERSION)\"' -DUC_VERSION_RC=$(UC_VER_RC) -o $@ src/ki2.rc
 	mkdir -p dist/windows/run
 	cp $(WIN_SDL)/bin/SDL2.dll README.md dist/windows/
 	rm -rf dist/windows/shaders && cp -r shaders dist/windows/
@@ -115,6 +133,10 @@ build-win/libchdr.o: src/third_party/libchdr_all.c
 	@mkdir -p $(dir $@)
 	$(WIN_CC) -O2 -w $(CHDR_INC) -c -o $@ $<
 
+build-win/version.o: build/version.c
+	@mkdir -p $(dir $@)
+	$(WIN_CC) $(WIN_CFLAGS) -c -o $@ $<
+
 build-win/rec_headers.o: build/rec_headers.c
 	@mkdir -p $(dir $@)
 	$(WIN_CC) $(WIN_CFLAGS) -c -o $@ $<
@@ -125,7 +147,7 @@ build-win/rec_headers.o: build/rec_headers.c
 LNX_ZIG  ?= deps/zig-linux/zig
 LNX_SDL  ?= deps/sdl2-lnx/build/libSDL2-2.0.so.0
 LNX_SDL_INC ?= deps/sdl2-lnx/build/include/SDL2 deps/sdl2-lnx/build/include-config-release/SDL2
-LNX_SRC   = $(SRC) src/rec_none.c build/rec_headers.c src/third_party/libchdr_all.c
+LNX_SRC   = $(SRC) src/rec_none.c build/rec_headers.c build/version.c src/third_party/libchdr_all.c
 
 build-lnx/ultracombo: $(LNX_SRC) src/*.h
 	mkdir -p build-lnx/inc/SDL2

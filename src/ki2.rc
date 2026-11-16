@@ -1,9 +1,14 @@
-// Windows resources: icon and version information.
+// Windows resources: icon and version information. The Makefile passes the
+// version (UC_VERSION_STR "1.2.6", UC_VERSION_RC 1,2,6,0) from the release tag.
+#ifndef UC_VERSION_STR
+#define UC_VERSION_STR "dev"
+#define UC_VERSION_RC 0,0,0,0
+#endif
 1 ICON "ki2.ico"
 
 1 VERSIONINFO
-FILEVERSION     1,0,0,0
-PRODUCTVERSION  1,0,0,0
+FILEVERSION     UC_VERSION_RC
+PRODUCTVERSION  UC_VERSION_RC
 FILEOS          0x40004
 FILETYPE        0x1
 BEGIN
@@ -12,9 +17,9 @@ BEGIN
     BLOCK "040904B0"
     BEGIN
       VALUE "FileDescription", "UltraCombo - native ports of the Killer Instinct arcade games"
-      VALUE "FileVersion", "1.0"
+      VALUE "FileVersion", UC_VERSION_STR
       VALUE "ProductName", "UltraCombo"
-      VALUE "ProductVersion", "1.0"
+      VALUE "ProductVersion", UC_VERSION_STR
       VALUE "OriginalFilename", "UltraCombo.exe"
     END
   END

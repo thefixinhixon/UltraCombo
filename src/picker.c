@@ -1,5 +1,6 @@
 // The game picker (picker.h): a small window with a tile per game.
 #include "picker.h"
+#include "version.h"
 #include "controller_labels.h"
 #include "icon.h"
 #include "osd.h"
@@ -83,6 +84,10 @@ static void draw(const game_t *const *games, const bool *installed, int sel, con
     text(320, 400, footer, 0x808080);
     if (!installed[0] || !installed[1])
         text(320, 424, "A GAME'S FILES GO IN THE RUN FOLDER (SEE README)", 0x606060);
+    char ver[64];
+    snprintf(ver, sizeof ver, "PROGRAM VERSION %s", uc_version);
+    for (char *c = ver; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
+    text(320, 452, ver, 0x505050);
     for (int y = 0; y < H; y++)                          // the text, doubled
         for (int x = 0; x < W; x++) blend(&canvas[y * W + x], ov[(y / 2) * 320 + x / 2]);
 }
