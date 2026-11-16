@@ -95,6 +95,13 @@ games' Count-timed waits ran fast: KI1's attract coin played at nearly twice
 its speed (issue #11). Translated and interpreted runs should show the same
 timing on screen; compare them when changing anything here.
 
+Recognised busy-wait loops are skipped (`is_irq_poll_loop` in `cpu.c`): a
+loop polling Cause for a video interrupt skips to the end of the scanline,
+and the games' disk wait (a dummy read, Cause, a timeout counter) to the end
+of the 256-cycle slice, since the disk only changes between slices. Spinning
+through the disk wait cost as much as the busiest game code all through every
+load, which pushed slower PCs over budget at each movie and fight load (#9).
+
 The picture is taken at the start of vblank (`video_vblank()`, line 240), as
 MAME draws it, not at the end of the frame: the games flip buffers early in
 vblank and may still be drawing into the new one, which made fighters

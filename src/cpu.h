@@ -30,7 +30,9 @@ void cpu_set_irq(int line, bool state);
 void cpu_skip(uint64_t n);
 // Set when the CPU is spinning on an interrupt line that only changes on a
 // scanline boundary; cpu_run returns early and the caller may skip ahead.
-extern bool cpu_idle;
+// cpu_idle_slice: waiting on the disk, which changes between slices, so
+// skip only to the end of the current slice.
+extern bool cpu_idle, cpu_idle_slice;
 void cpu_exception(int code, uint32_t badvaddr, bool has_badvaddr);
 size_t cpu_state(uint8_t *buf, bool load);     // save state; NULL buf: size only
 

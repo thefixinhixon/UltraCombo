@@ -18,7 +18,8 @@
 // Bumped when the emulation's timing changes without changing the state's
 // layout: states still load, but netplay won't pair differing builds.
 // 1: EPROM wait states, CPU slice overruns paid back, a 4 MB/s drive (issue #11)
-#define TIMING_VERSION 1
+// 2: the games' disk-wait loop is skipped to the end of each slice (issue #9)
+#define TIMING_VERSION 2
 
 static uint8_t *mirror;             // every page as of the last checkpoint
 static uint8_t *core, *core_tmp;    // non-paged state at the last checkpoint

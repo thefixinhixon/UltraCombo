@@ -296,7 +296,10 @@ void run_frame(void)
             if (want <= 0) m.cpu_over = -want;
             else {
                 int ran = (int)cpu_run((uint64_t)want);
-                if (cpu_idle) {
+                if (cpu_idle && cpu_idle_slice) {
+                    // waiting for the disk, which moves on between slices
+                    if (ran < want) { cpu_skip((uint64_t)(want - ran)); ran = want; }
+                } else if (cpu_idle) {
                     // spinning on an interrupt line: nothing changes until the next scanline
                     int rest = remaining - slice + want;
                     if (ran < rest) { cpu_skip((uint64_t)(rest - ran)); ran = rest; }

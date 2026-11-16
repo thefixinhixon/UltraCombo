@@ -10,7 +10,7 @@
 
 cpu_t cpu;
 bool cpu_trace;
-bool cpu_idle;
+bool cpu_idle, cpu_idle_slice;
 
 #define RS ((op >> 21) & 31)
 #define RT ((op >> 16) & 31)
@@ -50,23 +50,67 @@ static void cover_save(void)
 // i.e. polling an external interrupt line without doing anything else. The
 // delay slot may be a nop or "addiu rY,rY,imm" (an idle counter), which
 // cpu_skip keeps up to date.
-typedef struct { uint32_t pc; int8_t cnt_reg; int16_t cnt_imm; } poll_loop_t;
+//
+// And the games' wait for the disk (issue #9), with a dummy read and a timeout:
+// "1: lw zero,X(rB); mfc0 rX,Cause; beq rC,zero,timeout; andi rX,rX,IPmask;
+//  beq rX,zero,1b; addi rC,rC,-n". The disk only changes between slices, so
+// this one skips to the end of the slice (`slice`). Spinning in it cost as much
+// as the busiest game code, all through every load.
+typedef struct { uint32_t pc; int8_t cnt_reg; int16_t cnt_imm; uint8_t len; bool slice; } poll_loop_t;
 static poll_loop_t idle_loop;   // loop that set cpu_idle
+static uint64_t cp0_read(int reg);
 
 static poll_loop_t poll_yes[16];
 static uint32_t poll_no[64];
 static int poll_nyes, poll_nno;     // cleared at reset: decisions depend on RAM contents
+
+// The disk wait, at its mfc0: worth skipping only while the bit is still
+// clear and the timeout counter is far from running out.
+static bool disk_wait_idle(const poll_loop_t *l)
+{
+    uint32_t w[3];
+    memcpy(w, mem_ptr(l->pc & 0x1fffffffu) + 12, sizeof w);   // andi, beq, addi: checked when found
+    uint32_t bits = (uint32_t)cp0_read(CP0_CAUSE) & (w[0] & 0xffff);
+    if ((w[1] >> 26) == 0x04 ? bits != 0 : bits == 0) return false;     // leaves the loop this time
+    int32_t left = (int32_t)cpu.r[l->cnt_reg];
+    return left > 4096;                 // far more iterations than one slice runs
+}
+
+static bool match_disk_wait(uint32_t pc, poll_loop_t *l)
+{
+    uint8_t *p = mem_ptr((pc - 4) & 0x1fffffffu);
+    if (!p || (pc & 0xe0000000u) != 0x80000000u) return false;
+    uint32_t w[6];
+    memcpy(w, p, sizeof w);             // w[1] is the mfc0
+    uint32_t rx = (w[1] >> 16) & 31, rc = (w[2] >> 21) & 31;
+    bool ok = (w[0] >> 26) == 0x23 && ((w[0] >> 16) & 31) == 0 &&                     // lw zero,X(rB)
+              (w[2] >> 26) == 0x04 && ((w[2] >> 16) & 31) == 0 && (int16_t)w[2] > 0 &&   // beq rC,zero,fwd
+              rc != 0 && rc != rx &&
+              (w[3] >> 26) == 0x0c && ((w[3] >> 21) & 31) == rx && ((w[3] >> 16) & 31) == rx &&
+              (w[3] & 0xffff) && !(w[3] & 0x80ff) &&                                     // andi rX,rX,IP2..IP6
+              ((w[4] >> 26) == 0x04 || (w[4] >> 26) == 0x05) &&
+              ((w[4] >> 21) & 31) == rx && ((w[4] >> 16) & 31) == 0 && (int16_t)w[4] == -5 &&   // to the lw
+              ((w[5] >> 26) == 0x08 || (w[5] >> 26) == 0x09) &&
+              ((w[5] >> 21) & 31) == rc && ((w[5] >> 16) & 31) == rc && (int16_t)w[5] < 0;    // addi rC,rC,-n
+    if (ok) *l = (poll_loop_t){ pc - 4, (int8_t)rc, (int16_t)w[5], 6, true };
+    return ok;
+}
 
 static bool is_irq_poll_loop(uint32_t pc, uint32_t op)
 {
     poll_loop_t *yes = poll_yes;
     uint32_t *no = poll_no;
     int nyes = poll_nyes, nno = poll_nno;
-    for (int i = 0; i < nyes; i++) if (yes[i].pc == pc) { idle_loop = yes[i]; return true; }
+    for (int i = 0; i < nyes; i++)
+        if (yes[i].pc == pc - (yes[i].slice ? 4 : 0)) {
+            if (yes[i].slice && !disk_wait_idle(&yes[i])) return false;
+            idle_loop = yes[i];
+            return true;
+        }
     for (int i = 0; i < nno && i < 64; i++) if (no[i] == pc) return false;
 
     bool match = false;
-    poll_loop_t l = { pc, -1, 0 };
+    poll_loop_t l = { pc, -1, 0, 5, false };
     uint8_t *p = mem_ptr(pc & 0x1fffffffu);
     if (p && (pc & 0xe0000000u) == 0x80000000u) {
         uint32_t w[5];
@@ -85,6 +129,13 @@ static bool is_irq_poll_loop(uint32_t pc, uint32_t op)
                 l.cnt_imm = (int16_t)w[4];
             } else match = false;
         }
+    }
+    if (!match && match_disk_wait(pc, &l)) {
+        if (nyes < 16) yes[nyes++] = l;
+        poll_nyes = nyes;
+        if (!disk_wait_idle(&l)) return false;
+        idle_loop = l;
+        return true;
     }
     if (match) { if (nyes < 16) yes[nyes++] = l; idle_loop = l; }
     else no[nno++ % 64] = pc;
@@ -396,7 +447,7 @@ static void exec_cop0(uint32_t op)
     }
     switch (RS) {
     case 0x00:                                                // MFC0
-        if (RD == CP0_CAUSE && !cpu.in_delay && is_irq_poll_loop(cpu.cur_pc, op)) cpu_idle = true;
+        if (RD == CP0_CAUSE && !cpu.in_delay && is_irq_poll_loop(cpu.cur_pc, op)) { cpu_idle = true; cpu_idle_slice = idle_loop.slice; }
         WR(RT, SX32(cp0_read(RD)));
         break;
     case 0x01: WR(RT, cp0_read(RD)); break;                   // DMFC0
@@ -888,7 +939,7 @@ void cpu_skip(uint64_t n)
 {
     if (cpu_idle && idle_loop.cnt_reg > 0) {
         int r = idle_loop.cnt_reg;
-        cpu.r[r] = SX32((uint32_t)cpu.r[r] + (uint32_t)(n / 5) * (uint32_t)(int32_t)idle_loop.cnt_imm);
+        cpu.r[r] = SX32((uint32_t)cpu.r[r] + (uint32_t)(n / idle_loop.len) * (uint32_t)(int32_t)idle_loop.cnt_imm);
     }
     cpu.cycles += n;
     compare_check();
