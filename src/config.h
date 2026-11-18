@@ -84,3 +84,7 @@ void config_load(const char *path);
 uint32_t config_dsw(void);
 // Write the current settings back (to the path given to config_load).
 bool config_save(void);
+// A setting from the command line, "section.key=value" (or section/key), for
+// this session only: saving keeps the file's value unless the player changes
+// it in the game. After config_load. False (and a message) if it's unknown.
+bool config_override(const char *spec);

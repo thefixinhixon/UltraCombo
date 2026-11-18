@@ -154,10 +154,19 @@ vanish on single frames as they walked in (issue #5).
 - Graphics stay on OpenGL; no Vulkan.
 - No "resume where you left off" on launch.
 - Settings live in the table in `config.c` (`MAX_OPTS`), and `ki2.ini` is
-  written from it with comments.
-- Writable files go in `data_dir()`: beside the program if that's writable,
+  written from it with comments. `recomplauncher.json` (shipped in the
+  packages) shows some of them in RecompLauncher by section/key and value,
+  once per game: change it too when one of those is renamed or its values
+  change. Schema: https://recomplauncher.com/schema/recomplauncher.json
+- Writable files go in `data_dir()`: `--data-dir` if given (RecompLauncher
+  passes its install folder), else beside the program if that's writable,
   beside an AppImage that has `run/` next to it, else the user data folder
-  `UltraCombo2`. Bundled read-only files come from `base_dir()`.
+  `UltraCombo`. Nothing is written anywhere else (the Zig cache is in
+  `cache/zig`). Bundled read-only files come from `base_dir()`.
+- Every setting can be given on the command line (`--set section.key=value`,
+  `--fullscreen`, `--windowed`) for one session: `config_override()` keeps
+  the file's value when saving unless the player changes it in the game.
+  `RECOMPLAUNCHER_MODE=bigpicture` starts in fullscreen the same way.
 - Bundled shaders in `shaders/` must be permissively licensed. GPL presets are
   only fetched by `make shaders-extra`.
 

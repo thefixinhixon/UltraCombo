@@ -1,0 +1,311 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "name": "UltraCombo",
+  "repo": "thefixinhixon/UltraCombo",
+  "min": "0.90.0-beta.37",
+  "inputs": [
+    {
+      "id": "ki1",
+      "label": "Killer Instinct: your MAME set, kinst.zip with kinst/kinst.chd beside it as MAME keeps them, or a folder holding the files",
+      "role": "game",
+      "optional": true,
+      "formats": [
+        { "type": "file", "extensions": ["zip", "chd"] },
+        { "type": "folder" }
+      ]
+    },
+    {
+      "id": "ki2",
+      "label": "Killer Instinct 2: your MAME set, kinst2.zip with kinst2/kinst2.chd beside it as MAME keeps them, or a folder holding the files",
+      "role": "game",
+      "optional": true,
+      "formats": [
+        { "type": "file", "extensions": ["zip", "chd"] },
+        { "type": "folder" }
+      ]
+    }
+  ],
+  "start": {
+    "program": ["UltraCombo.exe", "ultracombo", "UltraCombo-x86_64.AppImage"],
+    "args": ["--data-dir", "{install}"]
+  },
+  "games": [
+    {
+      "id": "ki1",
+      "name": "UltraCombo",
+      "args": ["--game", "ki1", "{input:ki1}"],
+      "inputs": ["ki1"],
+      "saves": [
+        "{install}/ki1.ini", "{install}/saves/ki-*.settings", "{install}/states/*.ki1s"
+      ]
+    },
+    {
+      "id": "ki2",
+      "name": "UltraCombo 2",
+      "args": ["--game", "ki2", "{input:ki2}"],
+      "inputs": ["ki2"],
+      "saves": [
+        "{install}/ki2.ini", "{install}/saves/ki2-*.settings", "{install}/states/*.ki2s"
+      ]
+    }
+  ],
+  "config": [
+    {
+      "id": "ki1",
+      "format": "ini",
+      "file": [{ "path": "{install}/ki1.ini" }]
+    },
+    {
+      "id": "ki2",
+      "format": "ini",
+      "file": [{ "path": "{install}/ki2.ini" }]
+    }
+  ],
+  "folders": {
+    "data": [{ "path": "{install}" }],
+    "saves": [{ "path": "{install}/saves" }],
+    "logs": [{ "path": "{install}" }],
+    "screenshots": [{ "path": "{install}/screenshots" }]
+  },
+  "exit_codes": {
+    "1": "It couldn't find all of the game's files. Pick your MAME set again on the game's page: the zip, with its CHD beside it as MAME keeps them."
+  },
+  "looks": {
+    "allowed": false,
+    "reason": "UltraCombo has its own picture filters and CRT shaders: Picture filter here, or Menu > Video in the game."
+  },
+  "groups": [
+    { "id": "UltraCombo 2" },
+    { "id": "UltraCombo" }
+  ],
+  "settings": [
+    {
+      "id": "ki2_window", "label": "Window", "group": "UltraCombo 2", "in": "ki2",
+      "help": "Fullscreen fills your screen and lets you switch apps quickly. Exclusive gives the game the screen to itself. Alt+Enter switches in the game.",
+      "choices": [
+        { "label": "Windowed", "set": { "video/fullscreen": "no" } },
+        { "label": "Fullscreen", "set": { "video/fullscreen": "yes", "video/fullscreen_exclusive": "no" } },
+        { "label": "Exclusive", "set": { "video/fullscreen": "yes", "video/fullscreen_exclusive": "yes" } }
+      ],
+      "defaults": { "video/fullscreen": "no", "video/fullscreen_exclusive": "no" }
+    },
+    {
+      "id": "ki2_filter", "label": "Picture filter", "group": "UltraCombo 2", "in": "ki2",
+      "help": "Sharp shows the arcade's pixels as they are. Scanlines and CRT look like the cabinet's monitor. A shader chosen in the game's menu takes over from this.",
+      "choices": [
+        { "label": "Sharp", "set": { "video/filter": "sharp" } },
+        { "label": "Smooth", "set": { "video/filter": "smooth" } },
+        { "label": "Scanlines", "set": { "video/filter": "scanlines" } },
+        { "label": "CRT", "set": { "video/filter": "crt" } }
+      ],
+      "defaults": { "video/filter": "sharp" }
+    },
+    {
+      "id": "ki2_scale", "label": "Picture size", "group": "UltraCombo 2", "in": "ki2",
+      "help": "Fit is the largest 4:3 picture that fits. Integer is the sharpest but may leave a border. Stretch fills the screen.",
+      "choices": [
+        { "label": "Fit", "set": { "video/scale": "fit" } },
+        { "label": "Integer", "set": { "video/scale": "integer" } },
+        { "label": "Stretch", "set": { "video/scale": "stretch" } }
+      ],
+      "defaults": { "video/scale": "fit" }
+    },
+    {
+      "id": "ki2_runahead", "label": "Run-ahead", "group": "UltraCombo 2", "in": "ki2",
+      "help": "Hides the game's own frame of input lag. Off plays as the arcade did. 2 needs a fast PC.",
+      "choices": [
+        { "label": "Off", "set": { "system/run_ahead": "0" } },
+        { "label": "1 frame", "set": { "system/run_ahead": "1" } },
+        { "label": "2 frames", "set": { "system/run_ahead": "2" } }
+      ],
+      "defaults": { "system/run_ahead": "0" }
+    },
+    {
+      "id": "ki2_free_play", "label": "Free play", "group": "UltraCombo 2", "in": "ki2",
+      "help": "Just press Start. Off asks for coins, as the cabinet did.",
+      "choices": [
+        { "label": "On", "set": { "game/free_play": "yes" } },
+        { "label": "Off", "set": { "game/free_play": "no" } }
+      ],
+      "defaults": { "game/free_play": "yes" }
+    },
+    {
+      "id": "ki2_blood", "label": "Blood", "group": "UltraCombo 2", "in": "ki2",
+      "choices": [
+        { "label": "High", "set": { "game/blood": "high" } },
+        { "label": "Medium", "set": { "game/blood": "medium" } },
+        { "label": "Low", "set": { "game/blood": "low" } },
+        { "label": "None", "set": { "game/blood": "none" } }
+      ],
+      "defaults": { "game/blood": "high" }
+    },
+    {
+      "id": "ki2_finishers", "label": "Finishing moves", "group": "UltraCombo 2", "in": "ki2",
+      "help": "Ultra combos and No Mercy finishers.",
+      "choices": [
+        { "label": "On", "set": { "game/finishing_moves": "yes" } },
+        { "label": "Off", "set": { "game/finishing_moves": "no" } }
+      ],
+      "defaults": { "game/finishing_moves": "yes" }
+    },
+    {
+      "id": "ki2_disk", "label": "Loading", "group": "UltraCombo 2", "in": "ki2",
+      "help": "As on the cabinet, the VS screen waits while the fight loads, so the announcer finishes. Instant doesn't wait, and can cut him off.",
+      "choices": [
+        { "label": "As on the cabinet", "set": { "game/disk_speed": "original" } },
+        { "label": "Instant", "set": { "game/disk_speed": "instant" } }
+      ],
+      "defaults": { "game/disk_speed": "original" }
+    },
+    {
+      "id": "ki2_volume", "label": "Volume", "group": "UltraCombo 2", "in": "ki2",
+      "slider": { "key": "audio/volume", "min": 0, "max": 100, "step": 5, "format": "%d" },
+      "defaults": { "audio/volume": "100" }
+    },
+    {
+      "id": "ki2_pacing", "label": "Frame pacing", "group": "UltraCombo 2", "in": "ki2", "advanced": true,
+      "help": "The arcade ran at 58.96 Hz. Vsync is tear-free on 60 Hz screens but runs 1.7% fast. Audio keeps the arcade's speed. Automatic picks Vsync on 60 Hz screens.",
+      "choices": [
+        { "label": "Automatic", "set": { "video/pacing": "auto" } },
+        { "label": "Vsync", "set": { "video/pacing": "vsync" } },
+        { "label": "Audio", "set": { "video/pacing": "audio" } }
+      ],
+      "defaults": { "video/pacing": "auto" }
+    },
+    {
+      "id": "ki2_perf", "label": "Performance overlay", "group": "UltraCombo 2", "in": "ki2", "advanced": true,
+      "help": "Frame rate, emulation speed and the audio buffer, in a corner of the game.",
+      "choices": [
+        { "label": "Off", "set": { "video/performance_overlay": "no" } },
+        { "label": "On", "set": { "video/performance_overlay": "yes" } }
+      ],
+      "defaults": { "video/performance_overlay": "no" }
+    },
+
+    {
+      "id": "ki1_version", "label": "Game version", "group": "UltraCombo", "in": "ki1",
+      "help": "1.5d is the last arcade update. 1.4 is the one before it. Each needs its own boot ROM in your set.",
+      "choices": [
+        { "label": "1.5d", "set": { "game/version": "1.5d" } },
+        { "label": "1.4", "set": { "game/version": "1.4" } }
+      ],
+      "defaults": { "game/version": "1.5d" }
+    },
+    {
+      "id": "ki1_window", "label": "Window", "group": "UltraCombo", "in": "ki1",
+      "help": "Fullscreen fills your screen and lets you switch apps quickly. Exclusive gives the game the screen to itself. Alt+Enter switches in the game.",
+      "choices": [
+        { "label": "Windowed", "set": { "video/fullscreen": "no" } },
+        { "label": "Fullscreen", "set": { "video/fullscreen": "yes", "video/fullscreen_exclusive": "no" } },
+        { "label": "Exclusive", "set": { "video/fullscreen": "yes", "video/fullscreen_exclusive": "yes" } }
+      ],
+      "defaults": { "video/fullscreen": "no", "video/fullscreen_exclusive": "no" }
+    },
+    {
+      "id": "ki1_filter", "label": "Picture filter", "group": "UltraCombo", "in": "ki1",
+      "help": "Sharp shows the arcade's pixels as they are. Scanlines and CRT look like the cabinet's monitor. A shader chosen in the game's menu takes over from this.",
+      "choices": [
+        { "label": "Sharp", "set": { "video/filter": "sharp" } },
+        { "label": "Smooth", "set": { "video/filter": "smooth" } },
+        { "label": "Scanlines", "set": { "video/filter": "scanlines" } },
+        { "label": "CRT", "set": { "video/filter": "crt" } }
+      ],
+      "defaults": { "video/filter": "sharp" }
+    },
+    {
+      "id": "ki1_scale", "label": "Picture size", "group": "UltraCombo", "in": "ki1",
+      "help": "Fit is the largest 4:3 picture that fits. Integer is the sharpest but may leave a border. Stretch fills the screen.",
+      "choices": [
+        { "label": "Fit", "set": { "video/scale": "fit" } },
+        { "label": "Integer", "set": { "video/scale": "integer" } },
+        { "label": "Stretch", "set": { "video/scale": "stretch" } }
+      ],
+      "defaults": { "video/scale": "fit" }
+    },
+    {
+      "id": "ki1_runahead", "label": "Run-ahead", "group": "UltraCombo", "in": "ki1",
+      "help": "Shows your input sooner than the arcade did. This game has no input lag of its own, so Off plays as the arcade did.",
+      "choices": [
+        { "label": "Off", "set": { "system/run_ahead": "0" } },
+        { "label": "1 frame", "set": { "system/run_ahead": "1" } },
+        { "label": "2 frames", "set": { "system/run_ahead": "2" } }
+      ],
+      "defaults": { "system/run_ahead": "0" }
+    },
+    {
+      "id": "ki1_free_play", "label": "Free play", "group": "UltraCombo", "in": "ki1",
+      "help": "Just press Start. Off asks for coins, as the cabinet did.",
+      "choices": [
+        { "label": "On", "set": { "game/free_play": "yes" } },
+        { "label": "Off", "set": { "game/free_play": "no" } }
+      ],
+      "defaults": { "game/free_play": "yes" }
+    },
+    {
+      "id": "ki1_blood", "label": "Blood", "group": "UltraCombo", "in": "ki1",
+      "choices": [
+        { "label": "High", "set": { "game/blood": "high" } },
+        { "label": "Medium", "set": { "game/blood": "medium" } },
+        { "label": "Low", "set": { "game/blood": "low" } },
+        { "label": "None", "set": { "game/blood": "none" } }
+      ],
+      "defaults": { "game/blood": "high" }
+    },
+    {
+      "id": "ki1_blood_colour", "label": "Blood colour", "group": "UltraCombo", "in": "ki1",
+      "choices": [
+        { "label": "Red", "set": { "game/blood_colour": "red" } },
+        { "label": "White", "set": { "game/blood_colour": "white" } }
+      ],
+      "defaults": { "game/blood_colour": "red" }
+    },
+    {
+      "id": "ki1_finishers", "label": "Finishing moves", "group": "UltraCombo", "in": "ki1",
+      "help": "Ultra combos and No Mercy finishers.",
+      "choices": [
+        { "label": "On", "set": { "game/finishing_moves": "yes" } },
+        { "label": "Off", "set": { "game/finishing_moves": "no" } }
+      ],
+      "defaults": { "game/finishing_moves": "yes" }
+    },
+    {
+      "id": "ki1_disk", "label": "Loading", "group": "UltraCombo", "in": "ki1",
+      "help": "As on the cabinet, the VS screen waits while the fight loads, so the announcer finishes. Instant doesn't wait, and can cut him off.",
+      "choices": [
+        { "label": "As on the cabinet", "set": { "game/disk_speed": "original" } },
+        { "label": "Instant", "set": { "game/disk_speed": "instant" } }
+      ],
+      "defaults": { "game/disk_speed": "original" }
+    },
+    {
+      "id": "ki1_volume", "label": "Volume", "group": "UltraCombo", "in": "ki1",
+      "slider": { "key": "audio/volume", "min": 0, "max": 100, "step": 5, "format": "%d" },
+      "defaults": { "audio/volume": "100" }
+    },
+    {
+      "id": "ki1_pacing", "label": "Frame pacing", "group": "UltraCombo", "in": "ki1", "advanced": true,
+      "help": "The arcade ran at 58.96 Hz. Vsync is tear-free on 60 Hz screens but runs 1.7% fast. Audio keeps the arcade's speed. Automatic picks Vsync on 60 Hz screens.",
+      "choices": [
+        { "label": "Automatic", "set": { "video/pacing": "auto" } },
+        { "label": "Vsync", "set": { "video/pacing": "vsync" } },
+        { "label": "Audio", "set": { "video/pacing": "audio" } }
+      ],
+      "defaults": { "video/pacing": "auto" }
+    },
+    {
+      "id": "ki1_perf", "label": "Performance overlay", "group": "UltraCombo", "in": "ki1", "advanced": true,
+      "help": "Frame rate, emulation speed and the audio buffer, in a corner of the game.",
+      "choices": [
+        { "label": "Off", "set": { "video/performance_overlay": "no" } },
+        { "label": "On", "set": { "video/performance_overlay": "yes" } }
+      ],
+      "defaults": { "video/performance_overlay": "no" }
+    }
+  ],
+  "actions": [
+    { "id": "saves", "label": "Saves", "help": "Each game's own settings, audits and high scores, one file per game version.", "open": "saves" },
+    { "id": "screenshots", "label": "Screenshots", "open": "screenshots" },
+    { "id": "cache", "label": "Prepared game code", "help": "The game code each game built for this PC on its first start. Clearing it only helps if a game misbehaves after an update: it's built again next time, which takes about a minute.", "clear": "data/cache" }
+  ]
+}

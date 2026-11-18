@@ -258,6 +258,12 @@ static void format(const opt_t *o, char *buf, size_t n, bool defaults)
     }
 }
 
+// Settings given on the command line: the file's value (was) and the one
+// given (now), so saving can put the file's back while the setting is unchanged.
+#define MAX_OVERRIDES 32
+static struct { int opt; char was[1024], now[1024]; } ovr[MAX_OVERRIDES];
+static int novr;
+
 static bool write_file(const char *path, bool defaults)
 {
     FILE *f = fopen(path, "w");
@@ -270,9 +276,38 @@ static bool write_file(const char *path, bool defaults)
         if (strcmp(sec, o->section)) { fprintf(f, "\n[%s]\n", o->section); sec = o->section; }
         if (o->help) fprintf(f, "; %s\n", o->help);
         format(o, val, sizeof val, defaults);
+        for (int k = 0; k < novr && !defaults; k++)
+            if (ovr[k].opt == i && !strcmp(val, ovr[k].now)) snprintf(val, sizeof val, "%s", ovr[k].was);
         fprintf(f, "%s = %s\n", o->key, val);
     }
     return fclose(f) == 0;
+}
+
+bool config_override(const char *spec)
+{
+    const char *eq = strchr(spec, '='), *dot = strpbrk(spec, "./");
+    if (!eq || !dot || dot > eq) { fprintf(stderr, "--set %s: expected section.key=value\n", spec); return false; }
+    for (int i = 0; i < nopts; i++) {
+        opt_t *o = &opts[i];
+        if (strlen(o->section) != (size_t)(dot - spec) || SDL_strncasecmp(o->section, spec, (size_t)(dot - spec)) ||
+            strlen(o->key) != (size_t)(eq - dot - 1) || SDL_strncasecmp(o->key, dot + 1, (size_t)(eq - dot - 1)))
+            continue;
+        int k = 0;
+        while (k < novr && ovr[k].opt != i) k++;
+        if (k == MAX_OVERRIDES) break;
+        char was[1024];
+        format(o, was, sizeof was, false);
+        if (!set(o, eq + 1)) {
+            fprintf(stderr, "--set %s: bad value, keeping \"%s\"\n", spec, was);
+            set(o, was);
+            return false;
+        }
+        if (k == novr) { novr++; ovr[k].opt = i; snprintf(ovr[k].was, sizeof ovr[k].was, "%s", was); }
+        format(o, ovr[k].now, sizeof ovr[k].now, false);
+        return true;
+    }
+    fprintf(stderr, "--set %s: unknown setting\n", spec);
+    return false;
 }
 
 bool config_save(void) { return *cfg_path && write_file(cfg_path, false); }

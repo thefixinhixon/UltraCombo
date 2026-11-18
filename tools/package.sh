@@ -48,6 +48,7 @@ rm -rf "$out"
 mkdir -p "$out/run" "$out/tools/zig/lib" "$out/tools/tcc" "$out/licenses"
 cp "$prog" "$out/"
 cp README.md "$out/"
+cp recomplauncher.json "$out/"         # RecompLauncher reads it from the top of the release zip
 cp LICENSE "$out/licenses/UltraCombo-LICENSE.txt"
 cp tools/dist-readme.txt "$out/READ-ME-FIRST.txt"
 cp tools/run-readme.txt "$out/run/PUT-GAME-FILES-HERE.txt"

@@ -102,13 +102,28 @@ static bool writable_dir(const char *dir)
     return true;
 }
 
-// Where settings, the cache, save states and screenshots go: beside the
-// executable when that folder is writable (portable use), beside an AppImage
-// that has a run/ folder next to it, otherwise the user's own data folder.
+static char *data_dir_given;          // --data-dir
+
+// --data-dir: everything the program writes goes in this one folder (made if
+// needed), and its run/ is searched for the game files. Before data_dir() is used.
+static void set_data_dir(const char *p)
+{
+    size_t n = strlen(p);
+    data_dir_given = SDL_malloc(n + 2);
+    memcpy(data_dir_given, p, n + 1);
+    if (n && p[n - 1] != '/' && p[n - 1] != '\\') strcat(data_dir_given, "/");
+    make_dir(p);
+}
+
+// Where settings, the cache, save states and screenshots go: --data-dir,
+// else beside the executable when that folder is writable (portable use),
+// beside an AppImage that has a run/ folder next to it, otherwise the user's
+// own data folder.
 const char *data_dir(void)
 {
     static char *dir;
     if (dir) return dir;
+    if (data_dir_given) { dir = data_dir_given; return dir; }
     if (writable_dir(base_dir())) { dir = SDL_strdup(base_dir()); return dir; }
     const char *ai = appimage_dir();
     if (ai) {
@@ -506,6 +521,13 @@ static void usage(void)
         "  --version       print the program's version and exit\n"
         "  --game ki1|ki2  Killer Instinct or Killer Instinct 2 (default: a picker\n"
         "                  when both are installed); the options below are for %s\n"
+        "  --data-dir DIR  keep settings, saves, states, screenshots, logs and the\n"
+        "                  built game code in DIR (made if needed); DIR/run is\n"
+        "                  searched for the game files\n"
+        "  --fullscreen, --windowed  start that way (this session only)\n"
+        "  --set SECTION.KEY=VALUE  any setting of %s.ini, e.g. --set video.filter=crt\n"
+        "                  (this session only: the file keeps its value unless you\n"
+        "                  change it in the game); may be given more than once\n"
         "  --rom PATH      boot ROM (%s)\n"
         "  --disk PATH     disk image: MAME's %s, or a raw image extracted from it\n"
         "  --settings PATH file for the game's settings and high scores (default: saves/)\n"
@@ -529,7 +551,7 @@ static void usage(void)
         "  --net-delay N, --net-fps F, --net-sim LATENCY:JITTER:LOSS%%  (testing)\n"
         "Settings, key bindings and hotkeys are in %s.ini beside the executable\n"
         "(written with defaults on first run). See README.md.\n",
-        game.title, game.versions[0].rom, game.chd, game.sound_roms[0], game.id, game.id);
+        game.title, game.id, game.versions[0].rom, game.chd, game.sound_roms[0], game.id, game.id);
 }
 
 static int main_argc;
@@ -565,6 +587,7 @@ static int option_values(const char *a, const char *next)
 {
     static const char *const one[] = {
         "--rom", "--game-version", "--game", "--disk", "--settings", "--write-raw", "--sound", "--headless",
+        "--data-dir", "--set",
         "--shot-every", "--script", "--trace-from", "--load", "--rewind-test", "--runahead", "--join",
         "--net-host", "--net-join", "--net-delay", "--net-fps", "--net-sim", NULL,
     };
@@ -664,6 +687,7 @@ int main(int argc, char **argv)
     main_argv = argv;
     game_select(&game_ki1);              // until one is chosen (the program's icon is UltraCombo's)
     if (argc == 2 && !strcmp(argv[1], "--version")) { printf("%s %s\n", PRODUCT, uc_version); return 0; }
+    if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) { usage(); return 0; }
     // packaging helper: before anything writes a log or settings
     if (argc == 3 && !strcmp(argv[1], "--write-icon")) {
         size_t n = strlen(argv[2]);                     // .png: 256 pixels, else .ico
@@ -676,6 +700,7 @@ int main(int argc, char **argv)
         bool tool = false;                   // headless runs and tools never show the picker
         for (int i = 1; i < argc; i++) {
             if (!strcmp(argv[i], "--game") && i + 1 < argc) want = argv[i + 1];
+            if (!strcmp(argv[i], "--data-dir") && i + 1 < argc) set_data_dir(argv[i + 1]);
             if (!strcmp(argv[i], "--headless") || !strcmp(argv[i], "--recomp") || !strcmp(argv[i], "--dis") ||
                 !strcmp(argv[i], "--write-raw") || !strcmp(argv[i], "--test-shaders")) tool = true;
             if (argv[i][0] != '-' && !launch_path) launch_path = argv[i];
@@ -704,6 +729,22 @@ int main(int argc, char **argv)
     static char ini[4096];
     snprintf(ini, sizeof ini, "%s%s.ini", data_dir(), game.id);
     config_load(ini);
+    {   // settings from the command line, for this session; RecompLauncher's
+        // Big Picture mode (a controller on the couch) starts in fullscreen
+        bool screen_given = false;
+        for (int i = 1; i < argc; i++) {
+            if (!strcmp(argv[i], "--set") && i + 1 < argc) {
+                const char *s = argv[++i];
+                screen_given |= !SDL_strncasecmp(s, "video.fullscreen=", 17) || !SDL_strncasecmp(s, "video/fullscreen=", 17);
+                config_override(s);
+            } else if (!strcmp(argv[i], "--fullscreen") || !strcmp(argv[i], "--windowed")) {
+                config_override(argv[i][2] == 'f' ? "video.fullscreen=yes" : "video.fullscreen=no");
+                screen_given = true;
+            } else i += option_values(argv[i], i + 1 < argc ? argv[i + 1] : NULL);
+        }
+        const char *mode = getenv("RECOMPLAUNCHER_MODE");
+        if (!screen_given && mode && !strcmp(mode, "bigpicture")) config_override("video.fullscreen=yes");
+    }
     const char *rom_path = *cfg.rom ? cfg.rom : NULL;       // NULL: the configured version
     const char *want_version = launch_version() ? launch_version() : cfg.version;   // a clone's zip: its version
     const char *disk_path = *cfg.disk ? cfg.disk : NULL;     // NULL: look for one
@@ -720,6 +761,8 @@ int main(int argc, char **argv)
         if (!strcmp(argv[i], "--rom") && i + 1 < argc) rom_path = argv[++i];
         else if (!strcmp(argv[i], "--game-version") && i + 1 < argc) want_version = argv[++i];
         else if (!strcmp(argv[i], "--game") && i + 1 < argc) i++;            // chosen before the settings
+        else if ((!strcmp(argv[i], "--data-dir") || !strcmp(argv[i], "--set")) && i + 1 < argc) i++;   // used above
+        else if (!strcmp(argv[i], "--fullscreen") || !strcmp(argv[i], "--windowed")) {}
         else if (!strcmp(argv[i], "--disk") && i + 1 < argc) disk_path = argv[++i];
         else if (!strcmp(argv[i], "--settings") && i + 1 < argc) settings_path = argv[++i];
         else if (!strcmp(argv[i], "--write-raw") && i + 1 < argc) write_raw = argv[++i];

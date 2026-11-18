@@ -130,7 +130,15 @@ writable, else into the user data folder (`%APPDATA%\UltraCombo\` on
 Windows, `~/.local/share/UltraCombo/` on Linux), whose `run/` folder is also
 searched for the game files. With the AppImage, make a `run/` folder beside
 the `.AppImage`: the game files go in it, and settings and the cache go
-beside the AppImage too.
+beside the AppImage too. `--data-dir DIR` puts all of it in `DIR` instead
+(and looks for the game files in `DIR/run`): delete that folder and nothing
+is left behind.
+
+Any setting of `ki1.ini` / `ki2.ini` can be given on the command line for
+one session, e.g. `--set video.filter=crt --set game.free_play=no`;
+`--fullscreen` and `--windowed` are short for `--set video.fullscreen=...`.
+The file keeps its own value unless you change the setting in the game.
+`ultracombo --help` lists every option.
 
 ### Starting from a launcher
 
@@ -156,6 +164,7 @@ game is hidden: the launcher does the choosing.
 | Pegasus | `launch: "C:/Games/UltraCombo/UltraCombo.exe" "{file.path}"` |
 | Attract-Mode | Executable `UltraCombo.exe`, arguments `"[rompath][name][romext]"` |
 | Steam (and Steam Deck) | Add a Non-Steam Game, launch options `--game ki2` (or a path as above) |
+| RecompLauncher | Nothing to set up: the package's `recomplauncher.json` tells it how. Each game gets its own tile; on the setup screen, pick each game's MAME zip, CHD or folder (or skip the one you don't have). The main settings of each game are on its page there. Everything the program writes stays in the folder RecompLauncher installed it in, and Big Picture mode starts the game in fullscreen |
 
 From a controller, hold Back+Start for two seconds to quit, however the game
 was started. A `quit` key or pad button can be set in the menu (Controls →
@@ -438,8 +447,9 @@ the same inputs).
     make packages   # -> dist/UltraCombo-Windows.zip, dist/UltraCombo-Linux.tar.xz,
                     #    dist/UltraCombo-x86_64.AppImage and its .zsync
 
-These hold the program, Zig and TinyCC, SDL2 (Linux: in `lib/`), shaders and
-licences: no game files and no game code.
+These hold the program, Zig and TinyCC, SDL2 (Linux: in `lib/`), shaders,
+licences and `recomplauncher.json` (for RecompLauncher): no game files and no
+game code.
 
 The program's version comes from the tag: the one being built on GitHub
 Actions, else `git describe` (e.g. `1.2.6-3-gabc1234-dirty` between
