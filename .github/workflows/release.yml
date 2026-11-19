@@ -23,11 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # A slow Ubuntu mirror once stretched this from under a minute to 26
+      # (v1.2.8). Stalled downloads time out and are retried (the runner's
+      # mirror list has others to try), and the step gives up after 20
+      # minutes instead of the job's default 6 hours. Only the 64-bit MinGW
+      # compiler: everything Windows is built for x86_64.
       - name: Install build tools and SDL2's backend headers
+        timeout-minutes: 20
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -qy --no-install-recommends \
-            cmake ninja-build mingw-w64 squashfs-tools zsync zip xz-utils python3 \
+          apt="-o Acquire::Retries=3 -o Acquire::http::Timeout=30"
+          sudo apt-get $apt update -q
+          sudo apt-get $apt install -qy --no-install-recommends \
+            cmake ninja-build gcc-mingw-w64-x86-64 squashfs-tools zsync zip xz-utils python3 \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev \
             libegl-dev libgl-dev libgles-dev libdrm-dev libgbm-dev \
