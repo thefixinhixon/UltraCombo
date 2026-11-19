@@ -1,5 +1,5 @@
 # Builds the three release packages when a version tag (v1.2.3) is pushed,
-# and attaches them to a draft pre-release for that tag. Edit the notes and
+# and attaches them to a draft release for that tag. Edit the notes and
 # publish it on GitHub. Run it by hand (Actions > Release > Run workflow) to
 # build the packages without releasing: they appear as the run's artifact.
 #
@@ -70,7 +70,7 @@ jobs:
             dist/UltraCombo-x86_64.AppImage
             dist/UltraCombo-x86_64.AppImage.zsync
 
-      - name: Draft a pre-release with the packages
+      - name: Draft a release with the packages
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,5 +80,5 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" $files --clobber     # a release made by hand for this tag
           else
-            gh release create "$TAG" $files --draft --prerelease --title "UltraCombo $TAG" --generate-notes
+            gh release create "$TAG" $files --draft --title "UltraCombo $TAG" --generate-notes
           fi

@@ -457,8 +457,8 @@ releases), else `dev`; `make UC_VERSION=...` sets it by hand.
 
 Pushing a version tag (`git tag v1.2.0 && git push origin v1.2.0`) builds
 all of them on GitHub Actions (`.github/workflows/release.yml`) and attaches
-them to a draft pre-release for that tag: write the notes there and publish
-it. If a release for the tag already exists, the packages are added to it.
+them to a draft release for that tag: write the notes there and publish
+it (as a full release; mark a test build as a pre-release). If a release for the tag already exists, the packages are added to it.
 Running the workflow by hand (Actions > Release > Run workflow) builds the
 packages without releasing.
 

@@ -207,7 +207,8 @@ Packages (no game files, no game code):
     make packages        # dist/UltraCombo-Windows.zip, -Linux.tar.xz, -x86_64.AppImage (+ .zsync)
 
 Pushing a version tag builds them on GitHub Actions
-(`.github/workflows/release.yml`) into a draft pre-release.
+(`.github/workflows/release.yml`) into a draft release, published as a
+full release unless it's a test build.
 `tools/fetch-deps.sh` fills `deps/` from pinned, checksummed downloads; when
 a dependency changes, change it there (its checksum is the workflow's cache
 key). These need, in `deps/`:
